@@ -1,15 +1,16 @@
-# Project
-Describe your project
+# CS554 Project: Parallel Conjugate Gradients
+This repository contains code, documents, and scripts for the CS554 Project.
 
 ## Requirements
-List any dependencies, OS, compiler, etc
+- C
+- A C compiler
+- Access to Campus Cluster
 
 ## Installation
-Instructions to install the software
-
-## Usage
-Instructions on -- or at least link pointing to instructions on -- how to use
-the software
+```
+git clone yardasol/cs554-project
+```
 
 ## Contributing
-Please read the [CONTRIBUTING.md](https://github.com/yardasol/project/blob/main/CONTRIBUTING.md) document before making any changes.
+When making major changes to code, please create a new branch and make a pull request.
+Please read the [CONTRIBUTING.md](https://github.com/yardasol/cs554-project/blob/main/CONTRIBUTING.md) document for more details
