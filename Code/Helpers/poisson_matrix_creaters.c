@@ -39,6 +39,27 @@ float **create1dPoissonMat(int n){
     return A;
 }
 
+/* Create an ILU-preconditioned A */
+float **create1dILUPoissonMat(int n, float **A){
+    int i, k, j;
+
+    /* need to add some lines that multiply the L and U components */
+
+    for(i = 1; i < n; i++){
+        for(k = 0; k < i-1; k++){
+            if (A[i][k] != 0){
+                A[i][k] = A[i][k] / A[k][k];
+                for(j = k + 1; j < n; j++){
+                    if (A[i][j] != 0){
+                        A[i][j] = A[i][j] - A[i][k] * A[k][j]
+                    }
+                }
+            }
+        }
+    }
+    return A;
+}
+
 struct A_csr create1dPoissonMatCSR(int n){
     int i,  nnz, n_diag;
     struct A_csr A;
