@@ -72,6 +72,10 @@ int main(int argc, char *argv[])
     CG_FullMPI_timer_output(ntimerf,pmdat,x,xsol,b_p_csr,xguess,A,tol,dim);
     CG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim);
     CG_DIAMPI_timer_output(ntimerd,pmdat,x,xsol,b_p_csr,xguess,A_DIA,tol,dim);
+    
+    char pctype[10];
+    strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
+    PCCG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim,pctype);
 
     
     /*mult_Output_verify(N,n_diag,numprocs,rank,offsvec,
