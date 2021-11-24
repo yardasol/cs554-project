@@ -10,6 +10,8 @@
 #include "../Helpers/mpi_helpers.c"
 #include "../Helpers/cg_solvers.c"
 #include "../Helpers/mpi_cg_solvers.c"
+#include "../Helpers/preconditioner_solve.c"
+#include "../Helpers/mpi_pccg_solvers.c"
 
 
 int main(int argc, char *argv[])
@@ -29,9 +31,10 @@ int main(int argc, char *argv[])
     float* xguess = create1dZeroVec(N);   
     float tol = 0.000001;
     struct CGret cgret, cgretcsr, cgretdia; 
-    struct CGret cgret_p, cgretcsr_p, cgretdia_p;     
+    struct CGret cgret_p, cgretcsr_p, cgretdia_p, pccgretcsr_p;     
     clock_t beg, end; 
     float t_tot, err; int iters;
+    char pctype[10];
     
     int numprocs, rank, rc;
     MPI_Init(&argc,&argv);
@@ -65,11 +68,19 @@ int main(int argc, char *argv[])
     cgretcsr_p = mpiCGsolveCSR(pmdat,A_CSR,b_p_csr,xguess,tol);
     cgretdia_p = mpiCGsolveDIA(pmdat,A_DIA,b_p_csr,xguess,tol);
 
+    //Jacobi PC
+    strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
+    pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,b_p_csr,xguess,tol,pctype);
+
     
     /*mult_Output_verify(N,n_diag,numprocs,rank,offsvec,
         A,A_CSR,A_DIA,x,b,b_csr,b_dia,b_p,b_p_csr,b_p_dia); // Print output on rank 0 to validate mult routines
     */
-    cg_Output_verify(cgret_p,cgretcsr_p,cgretdia_p,x,b_p_csr,A,N,rank);
+    
+    //Output
+    //cg_Output_verify(cgret_p,cgretcsr_p,cgretdia_p,x,b_p_csr,A,N,rank);
+    cg_Output_verify_v2(cgret_p,cgretcsr_p,pccgretcsr_p,x,b_p_csr,A,N,rank);
+
 
     MPI_Finalize();
     return 0;
