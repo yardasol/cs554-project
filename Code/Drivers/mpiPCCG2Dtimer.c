@@ -10,6 +10,8 @@
 #include "../Helpers/mpi_helpers.c"
 #include "../Helpers/cg_solvers.c"
 #include "../Helpers/mpi_cg_solvers.c"
+#include "../Helpers/preconditioner_solve.c"
+#include "../Helpers/mpi_pccg_solvers.c"
 
 
 int main(int argc, char *argv[])
@@ -81,6 +83,10 @@ int main(int argc, char *argv[])
     CG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim);
     CG_DIAMPI_timer_output(ntimerd,pmdat,x,xsol,b_p_csr,xguess,A_DIA,tol,dim);
 
+    char pctype[10];
+    strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
+    PCCG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim,pctype);
+
     /*mult_Output_verify(N,n_diag,numprocs,rank,offsvec,
         A,A_CSR,A_DIA,x,b,b_csr,b_dia,b_p,b_p_csr,b_p_dia); // Print output on rank 0 to validate mult routines
     */
@@ -91,7 +97,3 @@ int main(int argc, char *argv[])
     MPI_Finalize();
     return 0;
 }
-
-
-
-

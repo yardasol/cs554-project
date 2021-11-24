@@ -10,6 +10,8 @@
 #include "../Helpers/mpi_helpers.c"
 #include "../Helpers/cg_solvers.c"
 #include "../Helpers/mpi_cg_solvers.c"
+#include "../Helpers/preconditioner_solve.c"
+#include "../Helpers/mpi_pccg_solvers.c"
 
 
 int main(int argc, char *argv[])
