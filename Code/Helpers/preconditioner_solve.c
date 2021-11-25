@@ -41,17 +41,17 @@ int updateU(){
 // Get ILU in-place factorization
 // hardcoded for 1D poisson matrix structure right now
 // WE MAY NEED TO USE POINTERS HERE to return the funcs
-int getILU(int n, struct A_csr A, struct A_csr arr[]){
+int getIncompleteLU(int n, struct A_csr *A_ptr, struct A_csr arr[]){
     int i, nnz, n_diag;
     struct A_csr L, U;
     n_diag = 2; //hardcoded
     nnz = n*n_diag - 1; //-1 hardcoded
 
-    n_diag_A = 3;
-    nnz_A = n*n_diag_A - 2;
+    n_diag_A = 3; //hardcoded
+    nnz_A = n*n_diag_A - 2; //hardcoded
 
     setupL(nnz, &L);
-    setupU(nnz, n_diag, &U, &A);
+    setupU(nnz, n_diag, &U, A);
 
     int cnt_L = 1;
     int cnt_U = n_diag; 
@@ -60,13 +60,13 @@ int getILU(int n, struct A_csr A, struct A_csr arr[]){
     int diag, row, col;
     int index_L_ik, index_U_kj;
     while (cnt_A < nnz_A){
-      row = A.row_ptr[cnt_A];
-      col = A.col_ind[cnt_A];
+      row = A_ptr->row_ptr[cnt_A];
+      col = A_ptr->col_ind[cnt_A];
       if (row > col){
 	//update L
 	diag = cnt_A;
-	while (A.row_ptr[diag] > A.col_ind[diag]) {diag += 1;}
-	L.val[cnt_L] = A.val[cnt_A]/A.val[diag];
+	while (A_ptr->row_ptr[diag] > A_ptr->col_ind[diag]) {diag += 1;}
+	L.val[cnt_L] = A_ptr->val[cnt_A]/A_ptr->val[diag];
 	L.col_ind[cnt_L] = col;
 	L.row_ptr[cnt_L] = row;
 	cnt_L += 1;
@@ -82,7 +82,7 @@ int getILU(int n, struct A_csr A, struct A_csr arr[]){
 	}
 	index_U_kj = ...;
 	//update U
-	U.val[cnt_U] = A.val[cnt_A] - L.val[index_L_ik]*U.val[index_U_kj];
+	U.val[cnt_U] = A_ptr->val[cnt_A] - L.val[index_L_ik]*U.val[index_U_kj];
 	U.row_ptr[cnt_U] = row;
 	U.col_ind[cnt_U] = col;
 	cnt_U += 1
@@ -146,7 +146,7 @@ struct PCret Jacobi_PC_Solve(int n, struct A_csr A, float* r){
 
 struct PCret ILU_PC_Solve(int n, struct A_csr A, float* r){
     struct PCret pcret;
-    struct A_csr  = ...;
+    struct A_csr L, U; 
     float* z = create1dZeroVec(n);
     pcret.diag = getILU(n,A);
     for(int i = 0; i < n; i++){
