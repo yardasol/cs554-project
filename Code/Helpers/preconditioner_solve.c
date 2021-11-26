@@ -75,7 +75,7 @@ struct PCret PC_Solve(int n, float* r, struct A_csr *A_ptr, struct A_csr *L_ptr,
     if (strcmp(pctype,"Jacobi")==0){
     	pcret = Jacobi_PC_Solve(n,A_ptr,r);
     }
-	if (stcmp(pctype, "ILU")==0){
+	if (strcmp(pctype, "ILU")==0){
 		pcret = ILU_PC_Solve(n, L_ptr, U_ptr, r);
 	}
 
