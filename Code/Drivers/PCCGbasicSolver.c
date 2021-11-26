@@ -24,11 +24,9 @@ int main(int argc, char *argv[])
     struct A_dia A_DIA= create1dPoissonMatDIA(N);
     int n_diag = 3;
 	int offset = 2;
-	struct A_csr ILU_CSR = createPoissonIncompleteLUCSR(n, n_diag, offset, &A_CSR);
-	struct A_csr L_CSR = getLfromPoissonILUCSR(n, n_diag, offset, &ILU_CSR);
-	struct A_csr U_CSR = getUfromPoissonILUCSR(n, n_diag, offset, &ILU_CSR);
-	//We don't need the in-place version of the ILU factorization anymore
-	free(ILU_CSR);
+	struct A_csr ILU_CSR = createPoissonIncompleteLUCSR(N, n_diag, offset, &A_CSR);
+	struct A_csr L_CSR = getLfromPoissonILUCSR(N, n_diag, offset, &ILU_CSR);
+	struct A_csr U_CSR = getUfromPoissonILUCSR(N, n_diag, offset, &ILU_CSR);
     float* x = create1dRandRHS(N);
     float* b = create1dZeroVec(N);  float* b_p = create1dZeroVec(N);         
     float* b_csr = create1dZeroVec(N);  float* b_p_csr = create1dZeroVec(N);

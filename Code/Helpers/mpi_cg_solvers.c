@@ -104,13 +104,13 @@ struct CGret mpiCGsolveCSR(struct par_multdat pmd, struct A_csr A, float* b, flo
     float* x = create1dZeroVec(n); 
 
     x = VecAdd1(n,xg,r,0);
-    dum = mpiMatVecProductCSR1(pmd,xg,A);
+    dum = mpiMatVecProductCSR1(pmd,xg,&A);
     r = VecAdd1(n,b,dum,-1); //r=b-A*x
     p = r;
     rsold = innerProd1(n,r,r); //rsold=r'*r
     int iters = 0;
     for (int i=0; i<n; i++){
-        Ap = mpiMatVecProductCSR1(pmd,p,A); // Ap=A*p
+        Ap = mpiMatVecProductCSR1(pmd,p,&A); // Ap=A*p
         alpha = rsold / innerProd1(n,p,Ap); // alpha=rsold/(p'*Ap)
         x = VecAdd1(n,x,p,alpha); // x=x+alpha*p
         r = VecAdd1(n,r,Ap,-alpha); // r=r-alpha*Ap
