@@ -60,7 +60,7 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr *A_ptr, struc
 
 
 void PCCG_CSRMPI_timer_output(int ntimer, struct par_multdat pmd, float* x,
- float* xsol, float* b, float* xguess, struct A_csr A_CSR, float tol, int dim, char* pctype){
+ float* xsol, float* b, float* xguess, struct A_csr *A_ptr, struct A_csr L_ptr, struct A_csr U_ptr, float tol, int dim, char* pctype){
     
     int rank = pmd.rank_d;
     int N = pmd.n_d;
@@ -70,7 +70,7 @@ void PCCG_CSRMPI_timer_output(int ntimer, struct par_multdat pmd, float* x,
     // Start Timer
     beg = clock();
         
-    for(int j=0; j<ntimer; j++){cgret = mpiPCCG_solveCSR(pmd,A_CSR,b,xguess,tol,pctype);}
+    for(int j=0; j<ntimer; j++){cgret = mpiPCCG_solveCSR(pmd,A_ptr, L_ptr, U_ptr,b,xguess,tol,pctype);}
     xsol = cgret.x;
     int iters = cgret.iter;
     // End timer
