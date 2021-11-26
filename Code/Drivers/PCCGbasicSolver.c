@@ -72,6 +72,10 @@ int main(int argc, char *argv[])
     strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
     pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,b_p_csr,xguess,tol,pctype);
 
+	//ILU PC
+	//strcpy(pctype,"ILU");
+	//pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,b_p_csr,xguess,tol,pctype);
+
     
     /*mult_Output_verify(N,n_diag,numprocs,rank,offsvec,
         A,A_CSR,A_DIA,x,b,b_csr,b_dia,b_p,b_p_csr,b_p_dia); // Print output on rank 0 to validate mult routines
