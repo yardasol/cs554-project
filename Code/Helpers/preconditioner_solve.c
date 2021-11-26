@@ -38,13 +38,8 @@ struct PCret Jacobi_PC_Solve(int n, struct A_csr A, float* r){
     return pcret;
 }
 
-struct PCret ILU_PC_Solve(int n, int n_diag, int offset, struct A_csr A, float* r){
+struct PCret ILU_PC_Solve(int n, struct A_csr A, struct A_csr L, struct A_csr U, float* r){
     struct PCret pcret;
-    struct A_csr ILU, L, U;
-	ILU = createPoissonIncompleteLUCSR(n, n_diag, offset, &A);
-	L = getLfromPoissonILUCSR(n, n_diag, offset, &ILU);
-	U = getUfromPoissonILUCSR(n, n_diag, offset, &ILU);
-
 	int l = 0; //CSR index
 
 	// Ly = r
@@ -61,28 +56,28 @@ struct PCret ILU_PC_Solve(int n, int n_diag, int offset, struct A_csr A, float* 
 	// Uz = y;
 	float *z = create1dZeroVec(n);
 	for (int i = n-1; i >= 0  ; i--){
-		while (L.row_ptr[l-1] == i){
-			z[i] -= L.val[l] * z[L.col_ind[l]];
+		while (U.row_ptr[l-1] == i){
+			z[i] -= U.val[l] * z[U.col_ind[l]];
 			l--;
 		}
 		z[i] += y[i];
-		z[i] = z[i] / L.val[l];
+		z[i] = z[i] / U.val[l];
 	}
     pcret.sol = z;
     return pcret;
 }
 
 /*Preconditioner solve*/
-struct PCret PC_Solve(int n, int n_diag, int offset, float* r, struct A_csr A, char* pctype){
+struct PCret PC_Solve(int n, float* r, struct A_csr A, char* pctype){
 
     struct PCret pcret;
 
     if (strcmp(pctype,"Jacobi")==0){
     	pcret = Jacobi_PC_Solve(n,A,r);
     }
-	if (stcmp(pctype, "ILU")==0){
-		pcret = ILU_PC_Solve(n, n_diag, offset, A, r);
-	}
+	//if (strcmp(pctype, "ILU")==0){
+	//		pcret = ILU_PC_Solve(n, A, L, U, r);
+	//}
 
     return pcret;
 }

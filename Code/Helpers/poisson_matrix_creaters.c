@@ -39,7 +39,7 @@ float **create1dPoissonMat(int n){
     return A;
 }
 
-float **createPoissonIncompleteLU(int n, float **A){
+float **createPoissonILU(int n, float **A){
     int i, k, j;
     for(i = 1; i < n; i++){
         for(k = 0; k < i; k++){
@@ -66,7 +66,7 @@ int increment_l(int l, int row, int col, int nnz, struct A_csr *A_ptr){
 	return l;
 }
 
-struct A_csr createPoissonIncompleteLUCSR(int n, int n_diag, int offset, struct A_csr *A_ptr){
+struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_ptr){
 	struct A_csr ILU_csr;
 	int nnz = n * n_diag - offset;
 
@@ -126,8 +126,8 @@ struct A_csr getLfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 	L_csr.row_ptr = malloc(sizeof(int*) * (nnz + 1));
 	L_csr.col_ind = malloc(sizeof(int*) * (nnz));
 
-	int row, col;
 	int l;
+	int row, col;
 	for (int k = 0; k < nnz_ILU; k++){
 		row = ILU_csr->row_ptr[k]; 
 		col = ILU_csr->col_ind[k];
@@ -157,8 +157,8 @@ struct A_csr getUfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 	U_csr.row_ptr = malloc(sizeof(int*) * (nnz + 1));
 	U_csr.col_ind = malloc(sizeof(int*) * (nnz));
 
-	int row, col;
 	int l;
+	int row, col;
 	for (int k = 0; k < nnz_ILU; k++){
 		row = ILU_csr->row_ptr[k]; 
 		col = ILU_csr->col_ind[k];

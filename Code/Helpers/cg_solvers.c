@@ -58,13 +58,13 @@ struct CGret CGsolveCSR(int n, struct A_csr A, float* b, float* xg, float tol)
     float* x;
     x = malloc(sizeof(float*) * n);
     x = VecAdd1(n,xg,r,0);
-    dum = matVecProductCSR1(n,xg,&A);
+    dum = matVecProductCSR1(n,xg,A);
     r = VecAdd1(n,b,dum,-1); //r=b-A*x
     p = r;
     rsold = innerProd1(n,r,r); //rsold=r'*r
     int iters;
     for (int i=0; i<n; i++){
-        Ap = matVecProductCSR1(n,p,&A); // Ap=A*p
+        Ap = matVecProductCSR1(n,p,A); // Ap=A*p
         alpha = rsold / innerProd1(n,p,Ap); // alpha=rsold/(p'*Ap)
         x = VecAdd1(n,x,p,alpha); // x=x+alpha*p
         r = VecAdd1(n,r,Ap,-alpha); // r=r-alpha*Ap

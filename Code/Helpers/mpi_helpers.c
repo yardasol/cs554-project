@@ -71,7 +71,7 @@ float* mpiMatVecProduct1( struct par_multdat pmd, float* x, float** a ) {
 }
 
 
-float* mpiMatVecProductCSR1( struct par_multdat pmd, float* y, struct A_csr *A_ptr)
+float* mpiMatVecProductCSR1( struct par_multdat pmd, float* y, struct A_csr A)
 {
     int source, dest, rows, offset, i, j, ind, ioff, col;
 
@@ -98,10 +98,10 @@ float* mpiMatVecProductCSR1( struct par_multdat pmd, float* y, struct A_csr *A_p
         for (i = 0; i<rows; i++)
         {   
             ioff = i+offset;
-            for (int j=A_ptr->row_ptr[ioff]; j<A_ptr->row_ptr[ioff+1]; j++)
+            for (int j=A.row_ptr[ioff]; j<A.row_ptr[ioff+1]; j++)
             {
-                col = A_ptr->col_ind[j];
-                b[ioff] += A_ptr->val[j] * y[col];
+                col = A.col_ind[j];
+                b[ioff] += A.val[j] * y[col];
             } 
         }  
         MPI_Send(&b[offset], rows, MPI_FLOAT, 0, 1, MPI_COMM_WORLD);
@@ -243,7 +243,7 @@ void mult_Output_verify(int N, int n_diag, int numprocs, int rank, int* offsvec,
         print_vec(N,b); print_vec(N,b0); 
         print_vec(N,b_csr); print_vec(N,b_dia);*/
         b = matVecProduct1(N,x,A);
-        b_csr = matVecProductCSR1(N,x,&A_CSR);
+        b_csr = matVecProductCSR1(N,x,A_CSR);
         b_dia = matVecProductDIA1(N,n_diag,x,A_DIA);
         sermult_debugger(N,b_csr,b); sermult_debugger(N,b_dia,b);
         parmult_debugger(N,numprocs,b_p,b,offsvec);
