@@ -74,8 +74,9 @@ struct A_csr createPoissonIncompleteLUCSR(int n, int n_diag, int offset, struct 
 	ILU_csr.row_ptr = malloc(sizeof(int*) * (nnz + 1));
 	ILU_csr.col_ind = malloc(sizeof(int*) * (nnz));
 
+	int l;
     int i, k, j;
-	int ik, kk ij, kj;
+	int ik, kk, ij, kj;
     for(i = 1; i < n; i++){
         for(k = 0; k < i; k++){
 			//find index correspoinding to index kj
@@ -99,7 +100,7 @@ struct A_csr createPoissonIncompleteLUCSR(int n, int n_diag, int offset, struct 
 
 					//find index corresponding to index kj
 					l = k * n_diag - offset;
-					l = increment_;(l, k, j, nnz, A_ptr);
+					l = increment_l(l, k, j, nnz, A_ptr);
 					kj = l;
 
 					//value at index kj can be zero, resulting in ILU[ij] == A[ij]
@@ -161,9 +162,9 @@ struct A_csr getUfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 		col = ILU_csr->col_ind[k];
 
 		if (row <= col){
-			L_csr.val[l] = ILU_csr->val[k];
-			L_csr.row_ptr[l] = row;
-			L_csr.col_ind[l] = col;
+			U_csr.val[l] = ILU_csr->val[k];
+			U_csr.row_ptr[l] = row;
+			U_csr.col_ind[l] = col;
 			l += 1;
 		}
 	}
@@ -213,8 +214,8 @@ struct A_csr compresssRowsL(int n, float **L){
         for(j = 0; j <= i; j++){
 			if (L[i][j] != 0.0){
 				L_csr.val[l] = L[i][j];
-				L_csr.row_ptr = i;
-				L_csr.col_ind = j;
+				L_csr.row_ptr[l] = i;
+				L_csr.col_ind[l] = j;
 				l += 1;
 			}
         }
@@ -239,8 +240,8 @@ struct A_csr compressRowsU(int n, float **U){
         for(j = i; j >= i; j++){
 			if (U[i][j] != 0.0){
 				U_csr.val[l] = U[i][j];
-				U_csr.row_ptr = i;
-				U_csr.col_ind = j;
+				U_csr.row_ptr[l] = i;
+				U_csr.col_ind[l] = j;
 				l += 1;
 			}
         }
