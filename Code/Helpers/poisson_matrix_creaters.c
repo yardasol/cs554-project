@@ -10,8 +10,8 @@
 
 struct A_csr {
     float* val;
-    float* col_ind;
-    float* row_ptr;
+    int* col_ind;
+    int* row_ptr;
 };
 
 struct A_dia {
@@ -59,7 +59,7 @@ float **createPoissonIncompleteLU(int n, float **A){
 int increment_l(int l, int row, int col, int nnz, struct A_csr *A_ptr){
 	while (A_ptr->row_ptr[l] != row){l++;}
 	while(A_ptr->row_ptr[l] == row){
-		if (A_ptr->row_ptr[l] != col){l++;		}
+		if (A_ptr->row_ptr[l] != col){l++;}
 		else{break;}
 	}
 	if (A_ptr->row_ptr[l] > row){l = nnz;}
