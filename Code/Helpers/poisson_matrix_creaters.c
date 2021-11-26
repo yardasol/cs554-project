@@ -10,8 +10,8 @@
 
 struct A_csr {
     float* val;
-    int* col_ind;
-    int* row_ptr;
+    float* col_ind;
+    float* row_ptr;
 };
 
 struct A_dia {
@@ -56,13 +56,17 @@ float **createPoissonILU(int n, float **A){
     return A;
 }
 
-int increment_l(int l, int row, int col, int nnz, struct A_csr *A_ptr){
-	while (A_ptr->row_ptr[l] != row){l++;}
-	while(A_ptr->row_ptr[l] == row){
-		if (A_ptr->row_ptr[l] != col){l++;}
-		else{break;}
+int find_l(int row, int col, int nnz, struct A_csr *A_ptr){
+	int l,i;
+	int next_row = A_ptr->row_ptr[row+1];
+	for (i = row; i < next_row; i++){
+		if (A_ptr->col_ind[i] == col){
+			l = i;
+		}
 	}
-	if (A_ptr->row_ptr[l] > row){l = nnz;}
+	if (i == next_row){
+		l = nnz;
+	}
 	return l;
 }
 
@@ -71,8 +75,8 @@ struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_
 	int nnz = n * n_diag - offset;
 
 	ILU_csr.val = malloc(sizeof(float*) * (nnz));
-	ILU_csr.row_ptr = malloc(sizeof(int*) * (nnz + 1));
-	ILU_csr.col_ind = malloc(sizeof(int*) * (nnz));
+	ILU_csr.row_ptr = A_ptr->row_ptr;
+	ILU_csr.col_ind = A_ptr->col_ind;
 
 	int l;
     int i, k, j;
@@ -80,28 +84,20 @@ struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_
     for(i = 1; i < n; i++){
         for(k = 0; k < i; k++){
 			//find index correspoinding to index kj
-			l = i * n_diag - offset;
-			l = increment_l(l, i, j, nnz, A_ptr);
-			ik = l;
+			ik = find_l(i, j, nnz, A_ptr);
 		
 			//find index corresponding to index kk
-			l = k * n_diag - offset;
-			l = increment_l(l, k, k, nnz, A_ptr);
-			kk = l;
+			kk = find_l(k, k, nnz, A_ptr);
 			if ((ik != nnz) && (kk != nnz)){
 
 				ILU_csr.val[ik] = A_ptr->val[ik] / A_ptr->val[kk];
 
 				for (j = k + 1; j < n; j++){
 					//find index corresponding to index ij
-					l = i * n_diag - offset;
-					l = increment_l(l, i, j, nnz, A_ptr);
-					ij = l;
+					ij = find_l(i, j, nnz, A_ptr);
 
 					//find index corresponding to index kj
-					l = k * n_diag - offset;
-					l = increment_l(l, k, j, nnz, A_ptr);
-					kj = l;
+					kj = find_l(k, j, nnz, A_ptr);
 
 					//value at index kj can be zero, resulting in ILU[ij] == A[ij]
 					if ((ij != nnz) && (kj == nnz)){
