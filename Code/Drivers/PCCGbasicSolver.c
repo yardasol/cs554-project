@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     struct par_multdat pmdat = parmult_struct_assign(offsvec,rows,rank,N,nwrks,n_diag); 
 
     //b_p = mpiMatVecProduct1(pmdat, x, A);
-    b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);        
+    b_p_csr = mpiMatVecProductCSR1(pmdat, x, &A_CSR);        
     //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);    
     
     cgret_p = mpiCGsolveFull(pmdat,A,b_p_csr,xguess,tol);

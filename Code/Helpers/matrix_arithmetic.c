@@ -32,17 +32,17 @@ float* matVecProduct1(int n, float* y, float** x)
   return b;
 }
 
-float* matVecProductCSR1(int n, float* y, struct A_csr A)
+float* matVecProductCSR1(int n, float* y, struct A_csr *A_ptr)
 {
   float* b; int col;
   b = malloc(sizeof(float*) * n);
   for (int i=0; i<n; i++)
   {
     b[i]=0;  
-    for (int j=A.row_ptr[i]; j<A.row_ptr[i+1]; j++)
+    for (int j=A_ptr->row_ptr[i]; j<A_ptr->row_ptr[i+1]; j++)
     {
-        col = A.col_ind[j];
-        b[i] += A.val[j] * y[col];
+        col = A_ptr->col_ind[j];
+        b[i] += A_ptr->val[j] * y[col];
     }
   }
   return b;

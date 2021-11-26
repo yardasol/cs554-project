@@ -30,7 +30,7 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr *A_ptr, struc
     float* z = create1dZeroVec(n);
 
     x = VecAdd1(n,xg,r,0);
-    dum = mpiMatVecProductCSR1(pmd,xg,A);
+    dum = mpiMatVecProductCSR1(pmd,xg,A_ptr);
     r = VecAdd1(n,b,dum,-1); //r=b-A*x
     pcret = PC_Solve(n,r,A_ptr,L_ptr,U_ptr,pctype); //Solve M*z0=r0
     z = pcret.sol;
@@ -39,7 +39,7 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr *A_ptr, struc
     rsold = innerProd1(n,r,z); //rsold=r'*r
     int iters = 0;
     for (int i=0; i<n; i++){
-        Ap = mpiMatVecProductCSR1(pmd,p,A); // Ap=A*p
+        Ap = mpiMatVecProductCSR1(pmd,p,A_ptr); // Ap=A*p
         alpha = rsold / innerProd1(n,p,Ap); // alpha=rsold/(p'*Ap)
         x = VecAdd1(n,x,p,alpha); // x=x+alpha*p
         r = VecAdd1(n,r,Ap,-alpha); // r=r-alpha*Ap
@@ -60,7 +60,7 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr *A_ptr, struc
 
 
 void PCCG_CSRMPI_timer_output(int ntimer, struct par_multdat pmd, float* x,
- float* xsol, float* b, float* xguess, struct A_csr *A_ptr, struct A_csr L_ptr, struct A_csr U_ptr, float tol, int dim, char* pctype){
+ float* xsol, float* b, float* xguess, struct A_csr *A_ptr, struct A_csr *L_ptr, struct A_csr *U_ptr, float tol, int dim, char* pctype){
     
     int rank = pmd.rank_d;
     int N = pmd.n_d;

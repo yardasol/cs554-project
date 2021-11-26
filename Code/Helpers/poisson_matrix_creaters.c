@@ -127,6 +127,7 @@ struct A_csr getLfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 	L_csr.col_ind = malloc(sizeof(int*) * (nnz));
 
 	int row, col;
+	int l;
 	for (int k = 0; k < nnz_ILU; k++){
 		row = ILU_csr->row_ptr[k]; 
 		col = ILU_csr->col_ind[k];
@@ -157,6 +158,7 @@ struct A_csr getUfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 	U_csr.col_ind = malloc(sizeof(int*) * (nnz));
 
 	int row, col;
+	int l;
 	for (int k = 0; k < nnz_ILU; k++){
 		row = ILU_csr->row_ptr[k]; 
 		col = ILU_csr->col_ind[k];
