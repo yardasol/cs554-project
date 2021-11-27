@@ -59,8 +59,6 @@ float **createPoissonILU(int n, float **A){
 int find_l(int row, int col, int nnz, struct A_csr *A_ptr){
 	int l,i;
 	int next_row = A_ptr->row_ptr[row+1];
-	//printf("row: %d\n", A_ptr->row_ptr[row]);
-	//printf("next row: %d\n", next_row);
 	for (i = (int) A_ptr->row_ptr[row]; i < next_row; i++){
 		if ((int) A_ptr->col_ind[i] == col){
 			l = i;
@@ -70,14 +68,12 @@ int find_l(int row, int col, int nnz, struct A_csr *A_ptr){
 	if (i == next_row){
 		l = nnz;
 	}
-	//printf("l: %d\n", l);
 	return l;
 }
 
 struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_ptr){
 	struct A_csr ILU_csr;
 	int nnz = n * n_diag - offset;
-	//printf("nnz: %d", nnz);
 
 	//copy A
 	ILU_csr.val = malloc(sizeof(float*) * (nnz));
@@ -93,8 +89,6 @@ struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_
 			//find index correspoinding to index ik 
 			ik = find_l(i, k, nnz, A_ptr);
 				
-			//printf("i,k: %d, %d\n", i, k);
-			//printf("ik: %d\n", ik);
 			//find index corresponding to index kk
 			kk = find_l(k, k, nnz, A_ptr);
 			if ((ik != nnz) && (kk != nnz)){
@@ -118,10 +112,6 @@ struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_
             }
         }
     }
-	printf("ILU: ");
-	for (int a = 0; a < nnz; a++){
-		printf("%.2f ", ILU_csr.val[a]);
-	}
     return ILU_csr;
 }
 
