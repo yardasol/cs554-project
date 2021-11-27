@@ -52,10 +52,10 @@ struct PCret ILU_PC_Solve(int n, struct A_csr L, struct A_csr U, float* r){
 		next_row_ptr = L.row_ptr[row+1];
 		for (i = row_ptr; i < next_row_ptr; i++){
 			col = L.col_ind[i];
-			y[row] -= L.val[i] * y[col])
+			y[row] -= L.val[i] * y[col];
 		}
 		y[row] += r[row];
-		y[rowi] = y[row] / L.val[i];
+		y[row] = y[row] / L.val[i];
 	}
 
 	// Uz = y;
@@ -65,7 +65,7 @@ struct PCret ILU_PC_Solve(int n, struct A_csr L, struct A_csr U, float* r){
 		next_row_ptr = U.row_ptr[row-1];
 		for (i = row_ptr; i > next_row_ptr; i--){
 			col = U.col_ind[i];
-			z[row] -= U.val[i] * z[col])
+			z[row] -= U.val[i] * z[col];
 		}
 		z[row] += y[row];
 		z[row] = z[row] / U.val[i];
