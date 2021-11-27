@@ -38,30 +38,37 @@ struct PCret Jacobi_PC_Solve(int n, struct A_csr A, float* r){
     return pcret;
 }
 
-struct PCret ILU_PC_Solve(int n, struct A_csr A, struct A_csr L, struct A_csr U, float* r){
+struct PCret ILU_PC_Solve(int n, struct A_csr L, struct A_csr U, float* r){
     struct PCret pcret;
 	int l = 0; //CSR index
 
 	// Ly = r
+	int row, col;
+	int row_ptr, next_row_ptr;
+	int i;
 	float *y = create1dZeroVec(n);
-	for (int i = 0; i < n; i++){
-		while (L.row_ptr[l+1] == i){
-			y[i] -= L.val[l] * y[(int) L.col_ind[l]];
-			l++;
+	for (row = 0; row < n; row++){
+		row_ptr = L.row_ptr[row];
+		next_row_ptr = L.row_ptr[row+1];
+		for (i = row_ptr; i < next_row_ptr; i++){
+			col = L.col_ind[i];
+			y[row] -= L.val[i] * y[col])
 		}
-		y[i] += r[i];
-		y[i] = y[i] / L.val[l];
+		y[row] += r[row];
+		y[rowi] = y[row] / L.val[i];
 	}
 
 	// Uz = y;
 	float *z = create1dZeroVec(n);
-	for (int i = n-1; i >= 0  ; i--){
-		while (U.row_ptr[l-1] == i){
-			z[i] -= U.val[l] * z[(int) U.col_ind[l]];
-			l--;
+	for (row = n; row >= 0; row--){
+		row_ptr = U.row_ptr[row];
+		next_row_ptr = U.row_ptr[row-1];
+		for (i = row_ptr; i > next_row_ptr; i--){
+			col = U.col_ind[i];
+			z[row] -= U.val[i] * z[col])
 		}
-		z[i] += y[i];
-		z[i] = z[i] / U.val[l];
+		z[row] += y[row];
+		z[row] = z[row] / U.val[i];
 	}
     pcret.sol = z;
     return pcret;
@@ -76,7 +83,7 @@ struct PCret PC_Solve(int n, float* r, struct A_csr A, char* pctype){
     	pcret = Jacobi_PC_Solve(n,A,r);
     }
 	//if (strcmp(pctype, "ILU")==0){
-	//		pcret = ILU_PC_Solve(n, A, L, U, r);
+	//		pcret = ILU_PC_Solve(n, L, U, r);
 	//}
 
     return pcret;
