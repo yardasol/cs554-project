@@ -75,16 +75,16 @@ struct PCret ILU_PC_Solve(int n, struct A_csr L, struct A_csr U, float* r){
 }
 
 /*Preconditioner solve*/
-struct PCret PC_Solve(int n, float* r, struct A_csr A, char* pctype){
+struct PCret PC_Solve(int n, float* r, struct A_csr A, struct A_csr L, struct A_csr U, char* pctype){
 
     struct PCret pcret;
 
     if (strcmp(pctype,"Jacobi")==0){
     	pcret = Jacobi_PC_Solve(n,A,r);
     }
-	//if (strcmp(pctype, "ILU")==0){
-	//		pcret = ILU_PC_Solve(n, L, U, r);
-	//}
+	if (strcmp(pctype, "ILU")==0){
+			pcret = ILU_PC_Solve(n, L, U, r);
+	}
 
     return pcret;
 }

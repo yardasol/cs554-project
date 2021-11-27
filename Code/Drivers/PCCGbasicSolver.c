@@ -74,11 +74,11 @@ int main(int argc, char *argv[])
 
     //Jacobi PC
     strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
-    pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,b_p_csr,xguess,tol,pctype);
+    pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,L_CSR,U_CSR,b_p_csr,xguess,tol,pctype);
 
 	//ILU PC
 	//strcpy(pctype,"ILU");
-	//pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,b_p_csr,xguess,tol,pctype);
+	//pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,L_CSR,U_CSR,b_p_csr,xguess,tol,pctype);
 
     
     /*mult_Output_verify(N,n_diag,numprocs,rank,offsvec,
