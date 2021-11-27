@@ -59,22 +59,29 @@ float **createPoissonILU(int n, float **A){
 int find_l(int row, int col, int nnz, struct A_csr *A_ptr){
 	int l,i;
 	int next_row = A_ptr->row_ptr[row+1];
-	for (i = row; i < next_row; i++){
-		if (A_ptr->col_ind[i] == col){
+	//printf("row: %d\n", A_ptr->row_ptr[row]);
+	//printf("next row: %d\n", next_row);
+	for (i = (int) A_ptr->row_ptr[row]; i < next_row; i++){
+		if ((int) A_ptr->col_ind[i] == col){
 			l = i;
+			break;
 		}
 	}
 	if (i == next_row){
 		l = nnz;
 	}
+	//printf("l: %d\n", l);
 	return l;
 }
 
 struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_ptr){
 	struct A_csr ILU_csr;
 	int nnz = n * n_diag - offset;
+	//printf("nnz: %d", nnz);
 
+	//copy A
 	ILU_csr.val = malloc(sizeof(float*) * (nnz));
+	for (int a = 0; a < nnz; a++){ILU_csr.val[a] = A_ptr->val[a];}
 	ILU_csr.row_ptr = A_ptr->row_ptr;
 	ILU_csr.col_ind = A_ptr->col_ind;
 
@@ -83,14 +90,15 @@ struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_
 	int ik, kk, ij, kj;
     for(i = 1; i < n; i++){
         for(k = 0; k < i; k++){
-			//find index correspoinding to index kj
-			ik = find_l(i, j, nnz, A_ptr);
-		
+			//find index correspoinding to index ik 
+			ik = find_l(i, k, nnz, A_ptr);
+				
+			//printf("i,k: %d, %d\n", i, k);
+			//printf("ik: %d\n", ik);
 			//find index corresponding to index kk
 			kk = find_l(k, k, nnz, A_ptr);
 			if ((ik != nnz) && (kk != nnz)){
-
-				ILU_csr.val[ik] = A_ptr->val[ik] / A_ptr->val[kk];
+				ILU_csr.val[ik] = ILU_csr.val[ik] / ILU_csr.val[kk];
 
 				for (j = k + 1; j < n; j++){
 					//find index corresponding to index ij
@@ -101,46 +109,55 @@ struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_
 
 					//value at index kj can be zero, resulting in ILU[ij] == A[ij]
 					if ((ij != nnz) && (kj == nnz)){
-						ILU_csr.val[ij] = A_ptr->val[ij];
+						ILU_csr.val[ij] = ILU_csr.val[ij];
 					}
 					if ((ij != nnz) && (kj != nnz)){
-						ILU_csr.val[ij] = A_ptr->val[ij] - A_ptr->val[ik] * A_ptr->val[kj];
+						ILU_csr.val[ij] = ILU_csr.val[ij] - ILU_csr.val[ik] * ILU_csr.val[kj];
 					}
 				}
             }
         }
     }
+	printf("ILU: ");
+	for (int a = 0; a < nnz; a++){
+		printf("%.2f ", ILU_csr.val[a]);
+	}
     return ILU_csr;
 }
 
-struct A_csr getLfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *ILU_csr){
+struct A_csr getLfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *ILU_ptr){
 	struct A_csr L_csr;
 	int nnz = n * ((n_diag + 1) / 2) - offset; //adjust for triangular matrix
 	int nnz_ILU = n * n_diag - offset;
 
 	L_csr.val = malloc(sizeof(float*) * (nnz));
-	L_csr.row_ptr = malloc(sizeof(int*) * (nnz + 1));
+	L_csr.row_ptr = malloc(sizeof(int*) * (n + 1));
 	L_csr.col_ind = malloc(sizeof(int*) * (nnz));
 
-	int l;
-	int row, col;
+	int l = 0;
+	int i;
+	int row = 0;
+	int col, next_row;
 	for (int k = 0; k < nnz_ILU; k++){
-		row = ILU_csr->row_ptr[k]; 
-		col = ILU_csr->col_ind[k];
-
-		if (row == col){
-			L_csr.val[l] = 1;
-			L_csr.row_ptr[l] = row;
-			L_csr.col_ind[l] = col;
-			l += 1;	
-		}
-		if (row > col){
-			L_csr.val[l] = ILU_csr->val[k];
-			L_csr.row_ptr[l] = row;
-			L_csr.col_ind[l] = col;
-			l += 1;
+		next_row = ILU_ptr->row_ptr[row+1];
+		for (i = row; i < next_row; i++){
+			col = ILU_ptr->col_ind[i];
+			if (col == row){
+				L_csr.val[l] = 1;
+				L_csr.col_ind[l] = col;
+				L_csr.row_ptr[next_row] = i+1;
+				l += 1;
+				}
+			if (row > col){
+				L_csr.val[l] = ILU_ptr->val[col];
+				L_csr.col_ind[l] = col;
+			}
 		}
 	}
+	//printf("L: ");
+	//for (int a = 0; a < nnz; a++){
+	//	printf("%.2f ", L_csr.col_ind[a]);
+	//}
 	return L_csr;
 }
 
