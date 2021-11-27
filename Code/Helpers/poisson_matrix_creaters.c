@@ -10,8 +10,8 @@
 
 struct A_csr {
     float* val;
-    float* col_ind;
-    float* row_ptr;
+    int* col_ind;
+    int* row_ptr;
 };
 
 struct A_dia {
@@ -144,10 +144,10 @@ struct A_csr getLfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 			}
 		}
 	}
-	//printf("L: ");
-	//for (int a = 0; a < nnz; a++){
-	//	printf("%.2f ", L_csr.col_ind[a]);
-	//}
+	printf("L: ");
+	for (int a = 0; a < nnz; a++){
+		printf("%.2f ", L_csr.col_ind[a]);
+	}
 	return L_csr;
 }
 
