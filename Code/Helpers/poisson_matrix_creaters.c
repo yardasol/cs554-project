@@ -161,11 +161,11 @@ struct A_csr getLfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 			if (row == col){
 				L_csr.val[l] = 1;
 				L_csr.col_ind[l] = col;
-				L_csr.row_ptr[row+1] = i+1;
+				L_csr.row_ptr[row+1] = l+1;
 				l += 1;
 			}
 			if (row > col){
-				//printf("row, col: %d, %d\n", row, col);
+
 				L_csr.val[l] = ILU_ptr->val[i];
 				L_csr.col_ind[l] = col;
 				l += 1;
@@ -201,7 +201,7 @@ struct A_csr getUfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 
 		}
 	
-		U_csr.row_ptr[row+1] = i;
+		U_csr.row_ptr[row+1] = l;
 	}
 	return U_csr;
 }
