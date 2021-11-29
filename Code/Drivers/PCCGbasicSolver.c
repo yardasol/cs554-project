@@ -23,10 +23,10 @@ int main(int argc, char *argv[])
     struct A_csr A_CSR= create1dPoissonMatCSR(N);
     struct A_dia A_DIA= create1dPoissonMatDIA(N);
     int n_diag = 3;
-	int offset = 2;
-	struct A_csr ILU_CSR = createPoissonILUCSR(N, n_diag, offset, &A_CSR);
-	struct A_csr L_CSR = getLfromPoissonILUCSR(N, n_diag, offset, &ILU_CSR);
-	struct A_csr U_CSR = getUfromPoissonILUCSR(N, n_diag, offset, &ILU_CSR);
+    int offset = 2;
+    struct A_csr ILU_CSR = createPoissonILUCSR(N, n_diag, offset, &A_CSR);
+    struct A_csr L_CSR = getLfromPoissonILUCSR(N, n_diag, offset, &ILU_CSR);
+    struct A_csr U_CSR = getUfromPoissonILUCSR(N, n_diag, offset, &ILU_CSR);
     float* x = create1dRandRHS(N);
     float* b = create1dZeroVec(N);  float* b_p = create1dZeroVec(N);         
     float* b_csr = create1dZeroVec(N);  float* b_p_csr = create1dZeroVec(N);
@@ -73,12 +73,12 @@ int main(int argc, char *argv[])
     cgretdia_p = mpiCGsolveDIA(pmdat,A_DIA,b_p_csr,xguess,tol);
 
     //Jacobi PC
-    strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
-    pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,L_CSR,U_CSR,b_p_csr,xguess,tol,pctype);
+    //strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
+    //pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,L_CSR,U_CSR,b_p_csr,xguess,tol,pctype);
 
-	//ILU PC
-	//strcpy(pctype,"ILU");
-	//pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,L_CSR,U_CSR,b_p_csr,xguess,tol,pctype);
+    //ILU PC
+    strcpy(pctype,"ILU");
+    pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,L_CSR,U_CSR,b_p_csr,xguess,tol,pctype);
 
     
     /*mult_Output_verify(N,n_diag,numprocs,rank,offsvec,
