@@ -165,7 +165,7 @@ struct A_csr getLfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 				l += 1;
 			}
 			if (row > col){
-				printf("row, col: %d, %d\n", row, col);
+				//printf("row, col: %d, %d\n", row, col);
 				L_csr.val[l] = ILU_ptr->val[i];
 				L_csr.col_ind[l] = col;
 				l += 1;
