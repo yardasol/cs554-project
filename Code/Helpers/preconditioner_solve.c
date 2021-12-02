@@ -23,9 +23,9 @@ float* getCSRdiagonal(int n, struct A_csr A){
                 d[col] = A.val[j];
                 col++; 
                 if(col>n){break;}   
-                }
             }
-        }     
+        }
+    }     
     return d; 
 }
 
@@ -46,11 +46,11 @@ struct PCret PC_Solve(struct par_multdat pmd, int n, float* r, struct A_csr A, s
     struct PCret pcret;
 
     if (strcmp(pctype,"Jacobi")==0){
-    	pcret = Jacobi_PC_Solve(n,A,r);
+        pcret = Jacobi_PC_Solve(n,A,r);
     }
-	if (strcmp(pctype, "ILU")==0){
-	pcret.sol = mpiTriangularSolveCSR1(pmd, r, L, U);
-	}
+    if (strcmp(pctype, "ILU")==0){
+        pcret.sol = mpiTriangularSolveCSR1(pmd, r, L, U);
+    }
 
     return pcret;
 }

@@ -60,8 +60,8 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, struct A_c
 
 
 void PCCG_CSRMPI_timer_output(int ntimer, struct par_multdat pmd, float* x,
- float* xsol, float* b, float* xguess, struct A_csr A_CSR, struct A_csr L_CSR, struct A_csr U_CSR, float tol, int dim, char* pctype){
-    
+        float* xsol, float* b, float* xguess, struct A_csr A_CSR, struct A_csr L_CSR, struct A_csr U_CSR, float tol, int dim, char* pctype){
+
     int rank = pmd.rank_d;
     int N = pmd.n_d;
     int nwrks = pmd.nwrks_d;
@@ -69,7 +69,7 @@ void PCCG_CSRMPI_timer_output(int ntimer, struct par_multdat pmd, float* x,
     struct CGret cgret;
     // Start Timer
     beg = clock();
-        
+
     for(int j=0; j<ntimer; j++){cgret = mpiPCCG_solveCSR(pmd,A_CSR,L_CSR,U_CSR,b,xguess,tol,pctype);}
     xsol = cgret.x;
     int iters = cgret.iter;
@@ -90,7 +90,7 @@ void PCCG_CSRMPI_timer_output(int ntimer, struct par_multdat pmd, float* x,
 
 
 void cg_Output_verify_v2(struct CGret cgret, struct CGret cgretcsr, struct CGret pccgretcsr,
- float* x, float* b, float** A, int n, int rank)
+        float* x, float* b, float** A, int n, int rank)
 {
     if (rank == 0)
     {   
