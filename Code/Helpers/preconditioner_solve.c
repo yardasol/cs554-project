@@ -41,7 +41,7 @@ struct PCret Jacobi_PC_Solve(int n, struct A_csr A, float* r){
 }
 
 /*Preconditioner solve*/
-struct PCret PC_Solve(struct par_multdat pmd, int n, float* r, struct A_csr A, struct A_csr L, struct A_csr U, char* pctype, int iters){
+struct PCret PC_Solve(struct par_multdat pmd, int n, float* r, struct A_csr A, struct A_csr L, struct A_csr U, char* pctype){
 
     struct PCret pcret;
 
