@@ -227,6 +227,90 @@ float mpiInnerProd1( struct par_multdat pmd, float* a, float* b)
     }    
 }
 
+
+/*MPI Algorithms*/
+float* mpiForwardTriangularSolveCSR1( struct par_multdat pmd, float* r, struct A_csr L)
+{
+    int source, dest, rows, offset, i, j, ind, ioff, col;
+
+    int rank = pmd.rank_d;
+    int n = pmd.n_d;
+    int numworkers = pmd.nwrks_d;
+    int* offsv = pmd.offsetv_d;  
+    offset = pmd.offsetv_d[rank-1];
+    rows = pmd.rows_d;        
+    float* y = create1dZeroVec(n); 
+    MPI_Status status; 
+ 
+    if (rank == 0)
+    {           
+        for (i=1; i<=numworkers; i++) {
+            source = i; ind = offsv[i-1]; rows = offsv[i]-offsv[i-1];
+            MPI_Recv(&y[ind], rows, MPI_FLOAT, source, 1, MPI_COMM_WORLD, &status);
+        } 
+        for (i=1; i<=numworkers; i++) {MPI_Send(y, n, MPI_FLOAT, i, 2, MPI_COMM_WORLD);}                       
+        return y;
+    }
+       
+    if (rank > 0) {             
+        for (i = 0; i<rows; i++)
+        {   
+            ioff = i+offset;
+            for (int j=L.row_ptr[ioff]; j<L.row_ptr[ioff+1] - 1; j++)
+            {
+                col = L.col_ind[j];
+                y[ioff] -= L.val[j] * r[col];
+            } 
+            y[ioff] += r[ioff];
+            y[ioff] = y[ioff] / L.val[j];
+        }  
+        MPI_Send(&y[offset], rows, MPI_FLOAT, 0, 1, MPI_COMM_WORLD);
+        MPI_Recv(y, n, MPI_FLOAT, 0, 2, MPI_COMM_WORLD, &status);
+        return y;
+    } 
+}
+
+float* mpiBackwardTriangularSolveCSR1( struct par_multdat pmd, float* y, struct A_csr U)
+{
+    int source, dest, rows, offset, i, j, ind, ioff, col;
+
+    int rank = pmd.rank_d;
+    int n = pmd.n_d;
+    int numworkers = pmd.nwrks_d;
+    int* offsv = pmd.offsetv_d;  
+    offset = pmd.offsetv_d[rank-1];
+    rows = pmd.rows_d;        
+    float* z = create1dZeroVec(n); 
+    MPI_Status status; 
+ 
+    if (rank == 0)
+    {           
+        for (i=1; i<=numworkers; i++) {
+            source = i; ind = offsv[i-1]; rows = offsv[i]-offsv[i-1];
+            MPI_Recv(&z[ind], rows, MPI_FLOAT, source, 1, MPI_COMM_WORLD, &status);
+        } 
+        for (i=1; i<=numworkers; i++) {MPI_Send(z, n, MPI_FLOAT, i, 2, MPI_COMM_WORLD);}                       
+        return z;
+    }
+       
+    if (rank > 0) {             
+        for (i = 0; i<rows; i++)
+        {   
+            ioff = i+offset;
+            for (int j=U.row_ptr[ioff+1] - 1; j>U.row_ptr[ioff]; j++)
+            {
+                col = U.col_ind[j];
+                z[ioff] -= U.val[j] * y[col];
+            } 
+            z[ioff] += y[ioff];
+            z[ioff] = z[ioff] / U.val[j];
+        }  
+        MPI_Send(&z[offset], rows, MPI_FLOAT, 0, 1, MPI_COMM_WORLD);
+        MPI_Recv(z, n, MPI_FLOAT, 0, 2, MPI_COMM_WORLD, &status);
+        return z;
+    } 
+}
+
 /*MPI Verifiers*/
 void mult_Output_verify(int N, int n_diag, int numprocs, int rank, int* offsvec, 
     float** A, struct A_csr A_CSR, struct A_dia A_DIA, float* x, float*b,

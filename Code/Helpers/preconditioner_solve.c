@@ -39,46 +39,48 @@ struct PCret Jacobi_PC_Solve(int n, struct A_csr A, float* r){
     return pcret;
 }
 
-struct PCret ILU_PC_Solve(int n, struct A_csr L, struct A_csr U, float* r){
+struct PCret ILU_PC_Solve(struct par_multdat pmd, int n, struct A_csr L, struct A_csr U, float* r){
     struct PCret pcret;
-	int l = 0; //CSR index
-	
-	// Ly = r
-	int row, col;
-	int row_ptr, next_row_ptr;
-	int i;
-	float *y = create1dZeroVec(n);
-        for (row = 0; row < n; row++){
-            row_ptr = L.row_ptr[row];
-            next_row_ptr = L.row_ptr[row+1];
-            for (i = row_ptr; i < next_row_ptr-1; i++){
-                col = L.col_ind[i];
-                //if(col==row){break;}
-                y[row] -= L.val[i] * y[col];
-            }
-            y[row] += r[row];
-            y[row] = y[row] / L.val[i];
-        }
+    int l = 0; //CSR index
+    
+    // Ly = r
+    int row, col;
+    int row_ptr, next_row_ptr;
+    int i;
+    float *y = create1dZeroVec(n);
+    y = mpiForwardTriangularSolveCSR1(pmd, r, L);
+    //for (row = 0; row < n; row++){
+    //    row_ptr = L.row_ptr[row];
+    //    next_row_ptr = L.row_ptr[row+1];
+    //    for (i = row_ptr; i < next_row_ptr-1; i++){
+    //        col = L.col_ind[i];
+            //if(col==row){break;}
+    //        y[row] -= L.val[i] * y[col];
+    //    }
+    //    y[row] += r[row];
+    //    y[row] = y[row] / L.val[i];
+    //}
 
-	// Uz = y;
-	float *z = create1dZeroVec(n);
-	for (row = n-1; row >= 0; row--){
-		row_ptr = U.row_ptr[row+1];
-		next_row_ptr = U.row_ptr[row];
-		for (i = row_ptr-1; i > next_row_ptr; i--){
-			col = U.col_ind[i];
-                        //if(col==row){break;}
-			z[row] -= U.val[i] * z[col];
-		}
-		z[row] += y[row];
-		z[row] = z[row] / U.val[i];
-	}
+    // Uz = y;
+    float *z = create1dZeroVec(n);
+    //z = mpiBackwardTriangularSolveCSR1(pmd,y,U);
+    //for (row = n-1; row >= 0; row--){
+    //	row_ptr = U.row_ptr[row+1];
+    //	next_row_ptr = U.row_ptr[row];
+    //	for (i = row_ptr-1; i > next_row_ptr; i--){
+    //		col = U.col_ind[i];
+                    //if(col==row){break;}
+    //		z[row] -= U.val[i] * z[col];
+    //	}
+    //	z[row] += y[row];
+    //	z[row] = z[row] / U.val[i];
+    //}
     pcret.sol = z;
     return pcret;
 }
 
 /*Preconditioner solve*/
-struct PCret PC_Solve(int n, float* r, struct A_csr A, struct A_csr L, struct A_csr U, char* pctype){
+struct PCret PC_Solve(struct par_multdat pmd, int n, float* r, struct A_csr A, struct A_csr L, struct A_csr U, char* pctype){
 
     struct PCret pcret;
 
@@ -86,7 +88,7 @@ struct PCret PC_Solve(int n, float* r, struct A_csr A, struct A_csr L, struct A_
     	pcret = Jacobi_PC_Solve(n,A,r);
     }
 	if (strcmp(pctype, "ILU")==0){
-			pcret = ILU_PC_Solve(n, L, U, r);
+			pcret = ILU_PC_Solve(pmd, n, L, U, r);
 	}
 
     return pcret;
