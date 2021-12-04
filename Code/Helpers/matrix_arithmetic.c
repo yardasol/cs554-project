@@ -8,8 +8,8 @@
 #include "poisson_matrix_creaters.c" // to include A_csr and A_dia structs
 // struct A_csr {
 //     float* val;
-//     float* col_ind;
-//     float* row_ptr;
+//     int* col_ind;
+//     int* row_ptr;
 // };
 
 // struct A_dia {
@@ -71,13 +71,127 @@ float* matVecProductDIA1(int n, int n_diag, float* y, struct A_dia A)
   return b;
 }
 
+int cooEntryComparison(const void* a, const void* b) {
+    const struct A_coo_entry* A_entry = a;
+    const struct B_coo_entry* B_entry = b;
+
+    if (a->row == b->row) {
+        if (a->col < b->col) {
+            return -1;
+        } else if (a->col > b->col) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else {
+        if (a->row > b->row) {
+            return 1;
+        } else if (a->row < b->row) {
+            return -1;
+        }
+    }
+}
+
+
+struct A_csr* coo_to_csr(struct A_coo* A) {
+    /* Make a copy of the COO entries and sort by row, column ordering.
+       This gives us entries that are in the same order as CSR */
+    struct A_coo_entry* data_copy = calloc(A->nnz, sizeof(struct A_coo_entry));
+    qsort(data_copy, A->nnz, sizeof(struct A_coo_entry), cooEntryComparison);
+
+    struct A_csr* Acsr = calloc(1, sizeof(struct A_csr));
+    float* val = calloc(A->nnz, sizeof(float));
+    int* col_ind = calloc(A->nnz, sizeof(int));
+    int* row_ptr = calloc(A->rows + 1, sizeof(int));
+    row_ptr[A->rows] = A->nnz;
+
+    /* Now, assemble the CSR matrix */
+    int current_row = -1;
+    for (int i = 0; i < A->nnz; i++) {
+        A_coo_entry* e = data_copy + i;
+        if (current_row != e->row) {
+            current_row = e->row;
+            row_ptr[current_row] = i;
+        }
+
+        val[i] = e->val;
+        col_ind[i] = e->col;
+    }
+
+    free(data_copy);
+    return Acsr;
+}
+
+struct A_csr* spmatTransposeCSR(struct A_csr* A, unsigned int A_num_rows, unsigned int A_num_cols) {
+    struct A_coo* At_coo = calloc(1, sizeof(struct A_coo));
+    const unsigned int nnz = A->row_ptr[A_num_rows];
+
+    At_coo->data = calloc(nnz, sizeof(struct A_coo_entry));
+    At_coo->nnz = A->row_ptr[A_num_rows];
+    At_coo->rows = A_num_cols;
+    At_coo->cols = A_num_rows;
+
+    /* Convert first to a transposed COO matrix because it is easier to work with */
+    unsigned int cur_nnz = 0
+    for (unsigned int row = 0; row < A_num_rows; row++) {
+        for (unsigned int ptr = A->row_ptr[row]; ptr < A->row_ptr[row+1]; ptr++) {
+            unsigned int col = A->col_ind[ptr];
+            float val = A->val[ptr];
+
+            At_coo->data[cur_nnz].val = val;
+            At_coo->data[cur_nnz].row = col;
+            At_coo->data[cur_nnz].col = row;
+
+            cur_nnz++;
+        }
+    }
+
+    /* Now, convert from COO to CSR */
+    struct A_csr* At_csr = coo_to_csr(At_coo);
+    free(At_coo);
+
+    return At_csr;
+}
+
+struct A_csr* spmatSpmatTransposeProductCSR(
+    struct A_csr* A, unsigned int A_num_rows, unsigned int A_num_cols,
+    struct A_csr* B, unsigned int B_num_rows, unsigned int B_num_cols,
+    unsigned int* C_rows_out, unsigned int* C_cols_out) {
+
+    assert(A_num_cols == B_num_cols);
+
+    /* todo */
+}
+
+
+/**
+ * Converts a sparse CSR matrix to a dense matrix.
+ */
+float** csr_to_dense(struct A_csr* A, unsigned int rows, unsigned int cols) {
+    const unsigned int nnz = A->row_ptr[rows];
+    float** A_dense = calloc(rows, sizeof(float*));
+
+    for (unsigned int row = 0; row < rows; row++) {
+        A_dense[row] = calloc(cols, sizeof(float));
+
+        /* Populate entries of the row */
+        for (unsigned int ptr = A->row_ptr[row]; ptr < A->row_ptr[row+1]; ptr++) {
+            const unsigned int col = A->col_ind[ptr];
+            A_dense[row][col] = A->val[ptr];
+        }
+    }
+
+    return A_dense;
+}
+
 /**
  * Computes a sparse Kronecker product between two CSR matrices.
  */
-struct A_csr* spkron(struct A_csr* A,
-                     unsigned int A_num_rows, unsigned int A_num_cols,
-                     struct A_csr* B,
-                     unsigned int B_num_rows, unsigned int B_num_cols) {
+struct A_csr* spkron(
+    struct A_csr* A, unsigned int A_num_rows, unsigned int A_num_cols,
+    struct A_csr* B, unsigned int B_num_rows, unsigned int B_num_cols,
+    unsigned int* C_rows_out, unsigned int* C_cols_out) {
+
     const unsigned int A_nnz = A->row_ptr[A_num_rows];
     const unsigned int B_nnz = B->row_ptr[B_num_rows];
     const unsigned int C_nnz = A_nnz * B_nnz;
@@ -116,6 +230,13 @@ struct A_csr* spkron(struct A_csr* A,
     C->val = C_vals;
     C->col_ind = C_cols;
     C->row_ptr = C_rowptrs;
+
+    if (C_rows_out != NULL) {
+        *C_rows_out = C_num_rows;
+    }
+    if (C_cols_out != NULL) {
+        *C_cols_out = C_num_cols;
+    }
 
     return C;
 }
