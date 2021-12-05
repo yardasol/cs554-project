@@ -23,7 +23,7 @@
 n=128				## Size of 2D Poisson matrix = (n^2)x(n^2) 
 nf=1				## no. of CG Full solves done to avg time
 nc=1				## no. of CG CSR solves done to avg time
-nd=1				## no. of CG DIA solves done to avg time
+nd=1				## no. of PCCG CSR solves done to avg time
 
 module load openmpi
 srun ./2DPCCGtimer.exe $n $nf $nc $nd
