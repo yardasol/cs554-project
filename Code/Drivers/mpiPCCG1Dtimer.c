@@ -66,14 +66,11 @@ int main(int argc, char *argv[])
     //b_p = mpiMatVecProduct1(pmdat, x, A);
     b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);        
     //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);    
-    
-    /*cgret_p = mpiCGsolveFull(pmdat,A,b_p_csr,xguess,tol);
-    cgretcsr_p = mpiCGsolveCSR(pmdat,A_CSR,b_p_csr,xguess,tol);
-    cgretdia_p = mpiCGsolveDIA(pmdat,A_DIA,b_p_csr,xguess,tol);*/
 
-    CG_FullMPI_timer_output(ntimerf,pmdat,x,xsol,b_p_csr,xguess,A,tol,dim);
+
+    //CG_FullMPI_timer_output(ntimerf,pmdat,x,xsol,b_p_csr,xguess,A,tol,dim);
     CG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim);
-    CG_DIAMPI_timer_output(ntimerd,pmdat,x,xsol,b_p_csr,xguess,A_DIA,tol,dim);
+    //CG_DIAMPI_timer_output(ntimerd,pmdat,x,xsol,b_p_csr,xguess,A_DIA,tol,dim);
     
     char pctype[10];
     strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
