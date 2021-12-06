@@ -19,10 +19,6 @@ int main(int argc, char *argv[])
     
     int N = atoi(argv[1]);
     int ntimerf, ntimerc, ntimerd;
-    ntimerf = atoi(argv[2]); // No. of times CG-Full solve done- time will be averaged
-    ntimerc = atoi(argv[3]); // No. of times CG-CSR solve done- time will be averaged
-    ntimerd = atoi(argv[4]); // No. of times CG-DIA solve done- time will be averaged
-    int dim = 1; // Poisson Matrix type 1D
     float** A = create1dPoissonMat(N);
     struct A_csr A_CSR= create1dPoissonMatCSR(N);
     struct A_dia A_DIA= create1dPoissonMatDIA(N);
@@ -35,9 +31,10 @@ int main(int argc, char *argv[])
     float* xguess = create1dZeroVec(N);   
     float tol = 0.000001;
     struct CGret cgret, cgretcsr, cgretdia; 
-    struct CGret cgret_p, cgretcsr_p, cgretdia_p;     
+    struct CGret cgret_p, cgretcsr_p, cgretdia_p, pccgretcsr_p;     
     clock_t beg, end; 
     float t_tot, err; int iters;
+    char pctype[10];
     
     int numprocs, rank, rc;
     MPI_Init(&argc,&argv);
@@ -66,22 +63,24 @@ int main(int argc, char *argv[])
     //b_p = mpiMatVecProduct1(pmdat, x, A);
     b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);        
     //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);    
-
-
-    //CG_FullMPI_timer_output(ntimerf,pmdat,x,xsol,b_p_csr,xguess,A,tol,dim);
-    CG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim);
-    //CG_DIAMPI_timer_output(ntimerd,pmdat,x,xsol,b_p_csr,xguess,A_DIA,tol,dim);
     
-    char pctype[10];
+    cgret_p = mpiCGsolveFull(pmdat,A,b_p_csr,xguess,tol);
+    cgretcsr_p = mpiCGsolveCSR(pmdat,A_CSR,b_p_csr,xguess,tol);
+    cgretdia_p = mpiCGsolveDIA(pmdat,A_DIA,b_p_csr,xguess,tol);
+
+    //Jacobi PC
     strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
-    PCCG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim,pctype);
+    pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,b_p_csr,xguess,tol,pctype);
 
     
     /*mult_Output_verify(N,n_diag,numprocs,rank,offsvec,
         A,A_CSR,A_DIA,x,b,b_csr,b_dia,b_p,b_p_csr,b_p_dia); // Print output on rank 0 to validate mult routines
     */
     
-    /*cg_Output_verify(cgret_p,cgretcsr_p,cgretdia_p,x,b_p_csr,A,N,rank); // Print output on rank 0 to validate CG routines */
+    //Output
+    //cg_Output_verify(cgret_p,cgretcsr_p,cgretdia_p,x,b_p_csr,A,N,rank);
+    cg_Output_verify_v2(cgret_p,cgretcsr_p,pccgretcsr_p,x,b_p_csr,A,N,rank);
+
 
     MPI_Finalize();
     return 0;
