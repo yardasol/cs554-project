@@ -1,13 +1,33 @@
+#ifndef MG_C_INCLUDED
+#define MG_C_INCLUDED
+
 #include "matrix_arithmetic.c"
 #include "poisson_matrix_creaters.c"
 #include <assert.h>
+
+struct MGLevelData {
+    struct A_csr* A;
+    float* diag;
+    struct A_csr* R; /* Represents restriction from higher level to this level */
+    struct A_csr* P; /* ^ */
+
+    unsigned int n_pts_per_dim;
+    unsigned int n_pts;
+};
+
+struct MGData {
+    struct MGLevelData* levels;
+    unsigned int num_levels;
+    unsigned int num_pre_relax;
+    unsigned int num_post_relax;
+};
 
 /**
  * Creates an interpolation operator that coarsens every other point.
  * Requires an odd number of points on the fine grid.
  * Follows 13.3.1 in Iterative Methods for Sparse Linear Systems, Y. Saad
  */
-struct A_csr* mg_1d_interpolation(unsigned int n_fine, unsigned int* n_coarse_out) {
+struct A_csr* mg_1d_interpolation_odd(unsigned int n_fine, unsigned int* n_coarse_out) {
     assert(n_fine % 2 == 1);
 
     unsigned int n_coarse = (n_fine-1) / 2;
@@ -17,7 +37,6 @@ struct A_csr* mg_1d_interpolation(unsigned int n_fine, unsigned int* n_coarse_ou
     int* col_indices = calloc(nnz, sizeof(int));
     int* row_ptrs = calloc(n_fine + 1, sizeof(int));
     row_ptrs[n_fine] = nnz;
-
 
     struct A_csr* ret = malloc(sizeof(struct A_csr));
     ret->val = data;
@@ -60,14 +79,55 @@ struct A_csr* mg_1d_interpolation(unsigned int n_fine, unsigned int* n_coarse_ou
 }
 
 /**
+ * Creates an interpolation operator that coarsens every two points into one.
+ * Requires an even number of points on the fine grid.
+ * This is completely made up and I don't know if it's a good interpolation operator.
+ */
+struct A_csr* mg_1d_interpolation_even(unsigned int n_fine, unsigned int* n_coarse_out) {
+    assert(n_fine % 2 == 0);
+
+    unsigned int n_coarse = n_fine / 2;
+    unsigned int nnz = n_fine;
+
+    float* data = calloc(nnz, sizeof(float));
+    int* col_indices = calloc(nnz, sizeof(int));
+    int* row_ptrs = calloc(n_fine + 1, sizeof(int));
+    row_ptrs[n_fine] = nnz;
+
+    struct A_csr* ret = malloc(sizeof(struct A_csr));
+    ret->val = data;
+    ret->col_ind = col_indices;
+    ret->row_ptr = row_ptrs;
+
+    for (unsigned int row = 0; row < n_fine; row++) {
+        row_ptrs[row] = row;
+        data[row] = 0.5;
+        col_indices[row] = row / 2;
+    }
+
+    if (n_coarse_out != NULL) {
+        *n_coarse_out = n_coarse;
+    }
+    return ret;
+}
+
+/**
+ * Creates a general interpolation operator in 1d that roughly halves the number of fine points.
+ */
+struct A_csr* mg_1d_interpolation(unsigned int n_fine, unsigned int* n_coarse_out) {
+    if (n_fine % 2 == 0) {
+        return mg_1d_interpolation_even(n_fine, n_coarse_out);
+    } else {
+        return mg_1d_interpolation_odd(n_fine, n_coarse_out);
+    }
+}
+
+/**
  * Creates an interpolation operator that coarsens every other point in x and y dimensions.
  * This should be passed the number of fine points in *one* dimension.
- * Number of fine points should be odd.
  */
 struct A_csr* mg_2d_interpolation(unsigned int n_fine, unsigned int* n_coarse_out,
                                   unsigned int* n_rows_out, unsigned int* n_cols_out) {
-    assert(n_fine % 2 == 1);
-
     unsigned int n_coarse;
     struct A_csr* P_1d = mg_1d_interpolation(n_fine, &n_coarse);
     struct A_csr* P_2d = spkron(P_1d, n_fine, n_coarse,
@@ -110,3 +170,5 @@ struct A_csr* mg_galerkin_product(struct A_csr* R, struct A_csr* A, unsigned int
 
     return RARt;
 }
+
+#endif /* MG_C_INCLUDED */

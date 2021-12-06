@@ -25,10 +25,10 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, float* b, 
     struct PCdata pcdata;
     float rsold, rsnew, alpha, rnorm;
     float* Ap = create1dZeroVec(n);
-    float* r = create1dZeroVec(n); 
+    float* r = create1dZeroVec(n);
     float* dum = create1dZeroVec(n);
-    float* p = create1dZeroVec(n); 
-    float* x = create1dZeroVec(n); 
+    float* p = create1dZeroVec(n);
+    float* x = create1dZeroVec(n);
     float* z = create1dZeroVec(n);
 
     x = VecAdd1(n,xg,r,0);
@@ -55,7 +55,7 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, float* b, 
         rsold = rsnew;
         iters = i;
     }
-    free(r); free(p); free(Ap); free(dum); free(z);
+    //free(r); free(p); free(Ap); free(dum); free(z);
     cgret.x = x;
     cgret.iter = iters;
     return cgret;
@@ -64,15 +64,15 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, float* b, 
 
 void PCCG_CSRMPI_timer_output(int ntimer, struct par_multdat pmd, float* x,
  float* xsol, float* b, float* xguess, struct A_csr A_CSR, float tol, int dim, char* pctype){
-    
+
     int rank = pmd.rank_d;
     int N = pmd.n_d;
     int nwrks = pmd.nwrks_d;
-    clock_t beg, end; 
+    clock_t beg, end;
     struct CGret cgret;
     // Start Timer
     beg = clock();
-        
+
     for(int j=0; j<ntimer; j++){cgret = mpiPCCG_solveCSR(pmd,A_CSR,b,xguess,tol,pctype);}
     xsol = cgret.x;
     int iters = cgret.iter;
@@ -81,10 +81,10 @@ void PCCG_CSRMPI_timer_output(int ntimer, struct par_multdat pmd, float* x,
     float t_tot = 1.0*(end-beg)/CLOCKS_PER_SEC;
     float err = VecErrNorm(N, xsol, x);
     //Output
-    if(rank==0){  
-        printf("CSR Matrix rep (PCCG):- \n");                
+    if(rank==0){
+        printf("CSR Matrix rep (PCCG):- \n");
         printf("Size %dD: %d on %d worker ranks\n",dim,N,nwrks);
-        printf("Error, tol, iters %3f %3f %d \n", err, tol, iters);// Error norm to check if soln converged    
+        printf("Error, tol, iters %3f %3f %d \n", err, tol, iters);// Error norm to check if soln converged
         printf("Total time taken: %f \n", t_tot/ntimer);
         printf("-------------------------------------------------------\n\n");
     }
@@ -96,14 +96,14 @@ void cg_Output_verify_v2(struct CGret cgret, struct CGret cgretcsr, struct CGret
  float* x, float* b, float** A, int n, int rank)
 {
     if (rank == 0)
-    {   
-        //Output                            
+    {
+        //Output
         //print_mat(n,n,A);
-        printf("b:\n"); print_vec(n,b);        
+        printf("b:\n"); print_vec(n,b);
         printf("Exact sol x:\n"); print_vec(n,x);
         printf("CGFull sol x:\n"); print_vec(n,cgret.x);
         printf("CGCSR sol x:\n"); print_vec(n,cgretcsr.x);
-        printf("PCCGCSR sol x:\n"); print_vec(n,pccgretcsr.x);        
+        printf("PCCGCSR sol x:\n"); print_vec(n,pccgretcsr.x);
         float errnorm = VecErrNorm(n,cgret.x,x);
         float errnormcsr = VecErrNorm(n,cgretcsr.x,x);
         float errnormpccgcsr = VecErrNorm(n,pccgretcsr.x,x);
@@ -116,4 +116,3 @@ void cg_Output_verify_v2(struct CGret cgret, struct CGret cgretcsr, struct CGret
 }
 
 #endif
-

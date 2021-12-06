@@ -16,7 +16,7 @@
 
 int main(int argc, char *argv[])
 {
-    
+
     int N = atoi(argv[1]);
     int ntimerf, ntimerc, ntimerd;
     ntimerf = atoi(argv[2]); // No. of times CG-Full solve done- time will be averaged
@@ -28,17 +28,17 @@ int main(int argc, char *argv[])
     struct A_dia A_DIA= create1dPoissonMatDIA(N);
     int n_diag = 3;
     float* x = create1dRandRHS(N);
-    float* b = create1dZeroVec(N);  float* b_p = create1dZeroVec(N);         
+    float* b = create1dZeroVec(N);  float* b_p = create1dZeroVec(N);
     float* b_csr = create1dZeroVec(N);  float* b_p_csr = create1dZeroVec(N);
     float* b_dia = create1dZeroVec(N);  float* b_p_dia = create1dZeroVec(N);
-    float* xsol = create1dZeroVec(N); 
-    float* xguess = create1dZeroVec(N);   
+    float* xsol = create1dZeroVec(N);
+    float* xguess = create1dZeroVec(N);
     float tol = 0.000001;
-    struct CGret cgret, cgretcsr, cgretdia; 
-    struct CGret cgret_p, cgretcsr_p, cgretdia_p;     
-    clock_t beg, end; 
+    struct CGret cgret, cgretcsr, cgretdia;
+    struct CGret cgret_p, cgretcsr_p, cgretdia_p;
+    clock_t beg, end;
     float t_tot, err; int iters;
-    
+
     int numprocs, rank, rc;
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
@@ -57,36 +57,32 @@ int main(int argc, char *argv[])
     int* offsvec =  row_load_allot(N,numprocs); // vector of offsets for each worker
     if (rank>0) { rows = offsvec[rank]-offsvec[rank-1]; } //Calc. no. of rows of A this worker rank deals with
 
-    // make sure all workers receive the same random vec x created by master 
-    communicate_xvec(N,rank,nwrks,x); 
+    // make sure all workers receive the same random vec x created by master
+    communicate_xvec(N,rank,nwrks,x);
 
     // create struct with data for parallel mult routines
-    struct par_multdat pmdat = parmult_struct_assign(offsvec,rows,rank,N,nwrks,n_diag); 
+    struct par_multdat pmdat = parmult_struct_assign(offsvec,rows,rank,N,nwrks,n_diag);
 
     //b_p = mpiMatVecProduct1(pmdat, x, A);
-    b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);        
-    //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);    
+    b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);
+    //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);
 
 
     //CG_FullMPI_timer_output(ntimerf,pmdat,x,xsol,b_p_csr,xguess,A,tol,dim);
     CG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim);
     //CG_DIAMPI_timer_output(ntimerd,pmdat,x,xsol,b_p_csr,xguess,A_DIA,tol,dim);
-    
+
     char pctype[10];
-    strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
+    strcpy(pctype,"MG1D"); //pctype = "Jacobi";
     PCCG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim,pctype);
 
-    
+
     /*mult_Output_verify(N,n_diag,numprocs,rank,offsvec,
         A,A_CSR,A_DIA,x,b,b_csr,b_dia,b_p,b_p_csr,b_p_dia); // Print output on rank 0 to validate mult routines
     */
-    
+
     /*cg_Output_verify(cgret_p,cgretcsr_p,cgretdia_p,x,b_p_csr,A,N,rank); // Print output on rank 0 to validate CG routines */
 
     MPI_Finalize();
     return 0;
 }
-
-
-
-
