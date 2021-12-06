@@ -6,6 +6,7 @@
 
 #include "poisson_matrix_creaters.c"
 #include "mg.c"
+#include "mpi_helpers.c"
 
 struct PCret {
     float* diag;
@@ -53,6 +54,7 @@ void setup_mg_pc(struct PCdata* pcdata, int n, struct A_csr* A, unsigned int num
         levels[0].n_pts_per_dim = n;
     }
     levels[0].n_pts = n;
+    levels[0].pmdat = parmult_create(n);
 
     for (unsigned int i = 1; i < num_levels; i++) {
         unsigned int n_coarse_per_dim, n_coarse;
@@ -75,6 +77,7 @@ void setup_mg_pc(struct PCdata* pcdata, int n, struct A_csr* A, unsigned int num
         levels[i].P = P;
         levels[i].n_pts_per_dim = n_coarse_per_dim;
         levels[i].n_pts = n_coarse;
+        levels[i].pmdat = parmult_create(n_coarse);
     }
 
     /* for (unsigned int i = 0; i < num_levels; i++) { */
@@ -110,7 +113,7 @@ struct PCret Jacobi_PC_Solve(int n, struct A_csr A, float* r, struct PCdata pcda
     return pcret;
 }
 
-void mg_solve_recursive(struct MGData* mg, struct MGLevelData* levels, unsigned int level, float* b, float* x) {
+void mg_solve_recursive(struct par_multdat pmd, struct MGData* mg, struct MGLevelData* levels, unsigned int level, float* b, float* x) {
     if (level >= mg->num_levels) {
         return;
     }
@@ -126,7 +129,7 @@ void mg_solve_recursive(struct MGData* mg, struct MGLevelData* levels, unsigned 
 
     /* Jacobi pre-relax */
     for (unsigned int i = 0; i < mg->num_pre_relax; i++) {
-        float* Ax = matVecProductCSR1(n, x, *levels[level].A);
+        float* Ax = mpiMatVecProductCSR1(levels[level].pmdat, x, *levels[level].A);
 
         /* Perform a weighted Jacobi sweep */
         for (unsigned int j = 0; j < n; j++) {
@@ -140,12 +143,12 @@ void mg_solve_recursive(struct MGData* mg, struct MGLevelData* levels, unsigned 
     if (level < mg->num_levels - 1) {
         /* Coarsen */
         unsigned int n_coarse = levels[level+1].n_pts;
-        float* x_H = matVecProductCSR1(n_coarse, x, *levels[level+1].R);
-        float* b_H = matVecProductCSR1(n_coarse, b, *levels[level+1].R);
-        mg_solve_recursive(mg, levels, level + 1, b_H, x_H);
+        float* x_H = mpiMatVecProductCSR1(levels[level + 1].pmdat, x, *levels[level+1].R);
+        float* b_H = mpiMatVecProductCSR1(levels[level + 1].pmdat, b, *levels[level+1].R);
+        mg_solve_recursive(pmd, mg, levels, level + 1, b_H, x_H);
 
         /* Interpolate and copy solution */
-        float* x_h = matVecProductCSR1(n, x_H, *levels[level+1].P);
+        float* x_h = mpiMatVecProductCSR1(levels[level].pmdat, x_H, *levels[level+1].P);
         for (unsigned int i = 0; i < n; i++) {
             x[i] = x_h[i];
         }
@@ -157,7 +160,7 @@ void mg_solve_recursive(struct MGData* mg, struct MGLevelData* levels, unsigned 
 
     /* Jacobi post-relax */
     for (unsigned int i = 0; i < mg->num_pre_relax; i++) {
-        float* Ax = matVecProductCSR1(n, x, *levels[level].A);
+        float* Ax = mpiMatVecProductCSR1(levels[level].pmdat, x, *levels[level].A);
 
         /* Perform a weighted Jacobi sweep */
         for (unsigned int j = 0; j < n; j++) {
@@ -168,14 +171,14 @@ void mg_solve_recursive(struct MGData* mg, struct MGLevelData* levels, unsigned 
     }
 }
 
-struct PCret mg_pc_solve(struct PCdata pcdata, float* r){
+struct PCret mg_pc_solve(struct par_multdat pmd, struct PCdata pcdata, float* r){
     struct PCret pcret;
     /* Approximately solve Ar = 0 */
     struct MGData* mg = pcdata.mg;
     struct MGLevelData* levels = mg->levels;
 
     float* z = create1dZeroVec(levels[0].n_pts);
-    mg_solve_recursive(mg, levels, 0, r, z);
+    mg_solve_recursive(pmd, mg, levels, 0, r, z);
     pcret.sol = z;
 
     /* printf("%d\n", levels[0].n_pts); */
@@ -186,7 +189,7 @@ struct PCret mg_pc_solve(struct PCdata pcdata, float* r){
 
 
 /*Preconditioner solve*/
-struct PCret PC_Solve(int n, float* r, struct A_csr A, char* pctype, struct PCdata pcdata){
+struct PCret PC_Solve(struct par_multdat pmd, int n, float* r, struct A_csr A, char* pctype, struct PCdata pcdata){
     /* printf("PC_Solve .%s.\n", pctype); */
     struct PCret pcret;
 
@@ -194,7 +197,7 @@ struct PCret PC_Solve(int n, float* r, struct A_csr A, char* pctype, struct PCda
     	pcret = Jacobi_PC_Solve(n,A,r, pcdata);
     } else if (strcmp(pctype, "MG2D") == 0 ||
                strcmp(pctype, "MG1D") == 0) {
-        pcret = mg_pc_solve(pcdata, r);
+        pcret = mg_pc_solve(pmd, pcdata, r);
     }
 
     return pcret;

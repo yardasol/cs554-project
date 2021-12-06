@@ -3,7 +3,7 @@
 n=11	## Size of 1D Poisson matrix
 p=5 	## No. of MPI ranks to use
 
-mpicc ../../Drivers/PCCGbasicSolver.c -lm -o pccgbasic_sol.exe 
+mpicc ../../Drivers/PCCGbasicSolver.c -lm -g -o pccgbasic_sol.exe
 echo $'PCCGbasicSolver.c Compiled with mpicc \n'
 
 mpirun --oversubscribe -np $p pccgbasic_sol.exe $n

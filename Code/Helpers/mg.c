@@ -13,6 +13,7 @@ struct MGLevelData {
 
     unsigned int n_pts_per_dim;
     unsigned int n_pts;
+    struct par_multdat pmdat;
 };
 
 struct MGData {
