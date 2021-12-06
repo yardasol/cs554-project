@@ -21,7 +21,7 @@ struct A_coo_entry {
 };
 
 struct A_coo {
-    A_coo_entry* data;
+    struct A_coo_entry* data;
     unsigned int nnz;
     unsigned int rows;
     unsigned int cols;

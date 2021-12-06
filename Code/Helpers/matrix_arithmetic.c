@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <string.h>
+#include <assert.h>
 #include "poisson_matrix_creaters.c" // to include A_csr and A_dia structs
 // struct A_csr {
 //     float* val;
@@ -73,20 +75,20 @@ float* matVecProductDIA1(int n, int n_diag, float* y, struct A_dia A)
 
 int cooEntryComparison(const void* a, const void* b) {
     const struct A_coo_entry* A_entry = a;
-    const struct B_coo_entry* B_entry = b;
+    const struct A_coo_entry* B_entry = b;
 
-    if (a->row == b->row) {
-        if (a->col < b->col) {
+    if (A_entry->row == B_entry->row) {
+        if (A_entry->col < B_entry->col) {
             return -1;
-        } else if (a->col > b->col) {
+        } else if (A_entry->col > B_entry->col) {
             return 1;
         } else {
             return 0;
         }
     } else {
-        if (a->row > b->row) {
+        if (A_entry->row > B_entry->row) {
             return 1;
-        } else if (a->row < b->row) {
+        } else if (A_entry->row < B_entry->row) {
             return -1;
         }
     }
@@ -108,7 +110,7 @@ struct A_csr* coo_to_csr(struct A_coo* A) {
     /* Now, assemble the CSR matrix */
     int current_row = -1;
     for (int i = 0; i < A->nnz; i++) {
-        A_coo_entry* e = data_copy + i;
+        struct A_coo_entry* e = data_copy + i;
         if (current_row != e->row) {
             current_row = e->row;
             row_ptr[current_row] = i;
@@ -132,7 +134,7 @@ struct A_csr* spmatTransposeCSR(struct A_csr* A, unsigned int A_num_rows, unsign
     At_coo->cols = A_num_rows;
 
     /* Convert first to a transposed COO matrix because it is easier to work with */
-    unsigned int cur_nnz = 0
+    unsigned int cur_nnz = 0;
     for (unsigned int row = 0; row < A_num_rows; row++) {
         for (unsigned int ptr = A->row_ptr[row]; ptr < A->row_ptr[row+1]; ptr++) {
             unsigned int col = A->col_ind[ptr];
@@ -153,6 +155,43 @@ struct A_csr* spmatTransposeCSR(struct A_csr* A, unsigned int A_num_rows, unsign
     return At_csr;
 }
 
+struct dynamic_array {
+    void* data;
+    unsigned int element_size;
+    unsigned int elements;
+    unsigned int capacity;
+};
+
+void dynamic_array_push_back(struct dynamic_array* ary, const void* element) {
+    if (ary->elements == ary->capacity) {
+        unsigned int new_capacity = ary->capacity * 2;
+        void* new_data = calloc(new_capacity, ary->element_size);
+        memcpy(new_data, ary->data, ary->elements * ary->element_size);
+
+        free(ary->data);
+        ary->data = new_data;
+        ary->capacity = new_capacity;
+    }
+
+    memcpy(ary->data + ary->elements * ary->element_size, element, ary->element_size);
+    ary->elements ++;
+}
+
+void dynamic_array_initialize(struct dynamic_array* ary, unsigned int element_size) {
+    ary->elements = 0;
+    ary->element_size = element_size;
+    ary->capacity = 8;
+    ary->data = calloc(ary->capacity, ary->element_size);
+}
+
+void dynamic_array_free(struct dynamic_array* ary) {
+    ary->elements = 0;
+    ary->element_size = 0;
+    ary->capacity = 0;
+    free(ary->data);
+    ary->data = NULL;
+}
+
 struct A_csr* spmatSpmatTransposeProductCSR(
     struct A_csr* A, unsigned int A_num_rows, unsigned int A_num_cols,
     struct A_csr* B, unsigned int B_num_rows, unsigned int B_num_cols,
@@ -160,7 +199,61 @@ struct A_csr* spmatSpmatTransposeProductCSR(
 
     assert(A_num_cols == B_num_cols);
 
-    /* todo */
+    struct dynamic_array coo_entries;
+    dynamic_array_initialize(&coo_entries, sizeof(struct A_coo_entry));
+
+    struct A_coo_entry entry_temp;
+    for (unsigned int i = 0; i < A_num_rows; i++) {
+        for (unsigned int j = 0; j < B_num_rows; j++) {
+            float sum = 0.f;
+
+            unsigned int A_start = A->row_ptr[i];
+            unsigned int A_end = A->row_ptr[i+1];
+            unsigned int B_start = B->row_ptr[j];
+            unsigned int B_end = B->row_ptr[j+1];
+
+            unsigned int A_current = A_start;
+            unsigned int B_current = B_start;
+
+            /* Perform the inner product */
+            while (true) {
+                if (A_current >= A_end ||
+                    B_current >= B_end) {
+                    break;
+                }
+
+                unsigned int A_col = A->col_ind[A_current];
+                unsigned int B_col = B->col_ind[B_current];
+
+                /* Add to 'sum' when the column indices match */
+                if (A_col < B_col) {
+                    A_current++;
+                } else if (A_col > B_col) {
+                    B_current++;
+                } else {
+                    sum += A->val[A_current] * B->val[B_current];
+                }
+            }
+
+            if (sum != 0.f) {
+                entry_temp.row = i;
+                entry_temp.col = j;
+                entry_temp.val = sum;
+                dynamic_array_push_back(&coo_entries, &entry_temp);
+            }
+        }
+    }
+
+    struct A_coo coo_repr;
+    coo_repr.data = coo_entries.data;
+    coo_repr.nnz = coo_entries.elements;
+    coo_repr.rows = A_num_rows;
+    coo_repr.cols = B_num_rows;
+
+    struct A_csr* csr_repr = coo_to_csr(&coo_repr);
+    dynamic_array_free(&coo_entries);
+
+    return csr_repr;
 }
 
 
@@ -199,8 +292,8 @@ struct A_csr* spkron(
     const unsigned int C_num_cols = A_num_cols * B_num_cols;
 
     float* C_vals = malloc(sizeof(float) * C_nnz);
-    float* C_cols = malloc(sizeof(float) * C_nnz);
-    float* C_rowptrs = malloc(sizeof(float) * (C_num_rows + 1));
+    int* C_cols = malloc(sizeof(int) * C_nnz);
+    int* C_rowptrs = malloc(sizeof(int) * (C_num_rows + 1));
 
     /* We iterate over one row at a time in C = (A kron B).
        This allows us to create C directly in CSR format */
