@@ -7,17 +7,8 @@
 #include <time.h>
 #include <string.h>
 #include <assert.h>
-#include "poisson_matrix_creaters.c" // to include A_csr and A_dia structs
-// struct A_csr {
-//     float* val;
-//     int* col_ind;
-//     int* row_ptr;
-// };
-
-// struct A_dia {
-//     float** val;
-//     float* off;
-// };
+#include "spmatrix.h" // to include A_csr and A_dia structs
+#include "helpers.c"
 
 /*Multipliers for three families of matrices*/
 float* matVecProduct1(int n, float* y, float** x)
@@ -73,7 +64,7 @@ float* matVecProductDIA1(int n, int n_diag, float* y, struct A_dia A)
   return b;
 }
 
-int cooEntryComparison(const void* a, const void* b) {
+int cooEntryComparator(const void* a, const void* b) {
     const struct A_coo_entry* A_entry = a;
     const struct A_coo_entry* B_entry = b;
 
@@ -94,22 +85,26 @@ int cooEntryComparison(const void* a, const void* b) {
     }
 }
 
-
 struct A_csr* coo_to_csr(struct A_coo* A) {
     /* Make a copy of the COO entries and sort by row, column ordering.
        This gives us entries that are in the same order as CSR */
     struct A_coo_entry* data_copy = calloc(A->nnz, sizeof(struct A_coo_entry));
-    qsort(data_copy, A->nnz, sizeof(struct A_coo_entry), cooEntryComparison);
+    memcpy(data_copy, A->data, A->nnz * sizeof(struct A_coo_entry));
+    qsort(data_copy, A->nnz, sizeof(struct A_coo_entry), cooEntryComparator);
 
-    struct A_csr* Acsr = calloc(1, sizeof(struct A_csr));
     float* val = calloc(A->nnz, sizeof(float));
     int* col_ind = calloc(A->nnz, sizeof(int));
     int* row_ptr = calloc(A->rows + 1, sizeof(int));
     row_ptr[A->rows] = A->nnz;
 
+    struct A_csr* Acsr = calloc(1, sizeof(struct A_csr));
+    Acsr->val = val;
+    Acsr->col_ind = col_ind;
+    Acsr->row_ptr = row_ptr;
+
     /* Now, assemble the CSR matrix */
     int current_row = -1;
-    for (int i = 0; i < A->nnz; i++) {
+    for (unsigned int i = 0; i < A->nnz; i++) {
         struct A_coo_entry* e = data_copy + i;
         if (current_row != e->row) {
             current_row = e->row;
@@ -155,43 +150,10 @@ struct A_csr* spmatTransposeCSR(struct A_csr* A, unsigned int A_num_rows, unsign
     return At_csr;
 }
 
-struct dynamic_array {
-    void* data;
-    unsigned int element_size;
-    unsigned int elements;
-    unsigned int capacity;
-};
-
-void dynamic_array_push_back(struct dynamic_array* ary, const void* element) {
-    if (ary->elements == ary->capacity) {
-        unsigned int new_capacity = ary->capacity * 2;
-        void* new_data = calloc(new_capacity, ary->element_size);
-        memcpy(new_data, ary->data, ary->elements * ary->element_size);
-
-        free(ary->data);
-        ary->data = new_data;
-        ary->capacity = new_capacity;
-    }
-
-    memcpy(ary->data + ary->elements * ary->element_size, element, ary->element_size);
-    ary->elements ++;
-}
-
-void dynamic_array_initialize(struct dynamic_array* ary, unsigned int element_size) {
-    ary->elements = 0;
-    ary->element_size = element_size;
-    ary->capacity = 8;
-    ary->data = calloc(ary->capacity, ary->element_size);
-}
-
-void dynamic_array_free(struct dynamic_array* ary) {
-    ary->elements = 0;
-    ary->element_size = 0;
-    ary->capacity = 0;
-    free(ary->data);
-    ary->data = NULL;
-}
-
+/**
+ * Computes a sparse matrix-matrix product between two CSR matrices like
+ * C = AB^T
+ */
 struct A_csr* spmatSpmatTransposeProductCSR(
     struct A_csr* A, unsigned int A_num_rows, unsigned int A_num_cols,
     struct A_csr* B, unsigned int B_num_rows, unsigned int B_num_cols,
@@ -216,7 +178,7 @@ struct A_csr* spmatSpmatTransposeProductCSR(
             unsigned int B_current = B_start;
 
             /* Perform the inner product */
-            while (true) {
+            while (1) {
                 if (A_current >= A_end ||
                     B_current >= B_end) {
                     break;
@@ -232,6 +194,8 @@ struct A_csr* spmatSpmatTransposeProductCSR(
                     B_current++;
                 } else {
                     sum += A->val[A_current] * B->val[B_current];
+                    A_current++;
+                    B_current++;
                 }
             }
 
@@ -252,6 +216,13 @@ struct A_csr* spmatSpmatTransposeProductCSR(
 
     struct A_csr* csr_repr = coo_to_csr(&coo_repr);
     dynamic_array_free(&coo_entries);
+
+    if (C_rows_out != NULL) {
+        *C_rows_out = A_num_rows;
+    }
+    if (C_cols_out != NULL) {
+        *C_cols_out = B_num_rows;
+    }
 
     return csr_repr;
 }

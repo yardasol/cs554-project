@@ -36,6 +36,26 @@ void print_mat(int nr, int nc, float** m)
   printf("\n");
 }
 
+/* these two are for debugging */
+void print_coo(struct A_coo* A) {
+    printf("COO matrix with %u nnz\n", A->nnz);
+    for (unsigned int i = 0; i < A->nnz; i++) {
+        printf("(%u, %u, %f)\n", A->data[i].row, A->data[i].col, A->data[i].val);
+    }
+}
+
+void print_csr(struct A_csr* A, unsigned int rows) {
+    unsigned int nnz = A->row_ptr[rows];
+    printf("CSR matrix with %u nnz\n", nnz);
+    for (unsigned int row = 0; row < rows; row++) {
+        printf("Row %u: ", row);
+        for (unsigned int ptr = A->row_ptr[row]; ptr < A->row_ptr[row+1]; ptr++) {
+            printf("(%u, %f) ", A->col_ind[ptr], A->val[ptr]);
+        }
+        printf("\n");
+    }
+}
+
 void print_vec(int n, float* v)
 {
   for (int i=0; i<n; i++)
@@ -103,5 +123,41 @@ void parmult_debugger(int n, int numprocs, float* b, float* b0, int* offsv) {
     return;
 }
 
+struct dynamic_array {
+    void* data;
+    unsigned int element_size;
+    unsigned int elements;
+    unsigned int capacity;
+};
+
+void dynamic_array_push_back(struct dynamic_array* ary, const void* element) {
+    if (ary->elements == ary->capacity) {
+        unsigned int new_capacity = ary->capacity * 2;
+        void* new_data = calloc(new_capacity, ary->element_size);
+        memcpy(new_data, ary->data, ary->elements * ary->element_size);
+
+        free(ary->data);
+        ary->data = new_data;
+        ary->capacity = new_capacity;
+    }
+
+    memcpy(ary->data + ary->elements * ary->element_size, element, ary->element_size);
+    ary->elements ++;
+}
+
+void dynamic_array_initialize(struct dynamic_array* ary, unsigned int element_size) {
+    ary->elements = 0;
+    ary->element_size = element_size;
+    ary->capacity = 8;
+    ary->data = calloc(ary->capacity, ary->element_size);
+}
+
+void dynamic_array_free(struct dynamic_array* ary) {
+    ary->elements = 0;
+    ary->element_size = 0;
+    ary->capacity = 0;
+    free(ary->data);
+    ary->data = NULL;
+}
 
 #endif

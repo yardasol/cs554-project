@@ -7,30 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-
-struct A_csr {
-    float* val;
-    int* col_ind;
-    int* row_ptr;
-};
-
-struct A_coo_entry {
-    float val;
-    unsigned int row;
-    unsigned int col;
-};
-
-struct A_coo {
-    struct A_coo_entry* data;
-    unsigned int nnz;
-    unsigned int rows;
-    unsigned int cols;
-};
-
-struct A_dia {
-    float** val;
-    float* off;
-};
+#include "spmatrix.h"
 
 /*Create a 1D representation of matrices*/
 float **create1dPoissonMat(int n){
@@ -115,15 +92,24 @@ float **create2dPoissonMat(int size) {
     A = malloc(sizeof(float*) * n);
 
     for (int row = 0; row < n; row++) {
-        A[row] = malloc(sizeof(int *) * n);
+        A[row] = calloc(n, sizeof(int));
     }
-    for(i = 0; i < n; i++){
-        for(j = 0; j < n; j++){
-            A[i][j] = 0;
-            if (i==j) {A[i][j] = 4;}
-            else{
-                if ((i==j+1)||(i==j-1)){A[i][j] = -1;}
-                else{if ((i==j+size)||(i==j-size)) {A[i][j] = -1;}}
+
+    for (unsigned int x = 0; x < size; x++) {
+        for (unsigned int y = 0; y < size; y++) {
+            unsigned int idx = y*size + x;
+            A[idx][idx] = 4.f;
+            if (x > 0) {
+                A[idx][idx - 1] = -1.f;
+            }
+            if (x < size - 1) {
+                A[idx][idx + 1] = -1.f;
+            }
+            if (y > 0) {
+                A[idx][idx - size] = -1.f;
+            }
+            if (y < size - 1) {
+                A[idx][idx + size] = -1.f;
             }
         }
     }
