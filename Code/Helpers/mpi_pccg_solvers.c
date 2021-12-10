@@ -15,8 +15,7 @@
 #include "preconditioner_solve.c"
 #include "mpi_helpers.c"
 
-
-struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, float* b, float* xg, float tol, char* pctype)
+struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, struct A_csr L, struct A_csr U, float* b, float* xg, float tol, char* pctype)
 {
     int rank = pmd.rank_d;
     int n = pmd.n_d;
@@ -34,8 +33,8 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, float* b, 
     x = VecAdd1(n,xg,r,0);
     dum = mpiMatVecProductCSR1(pmd,xg,A);
     r = VecAdd1(n,b,dum,-1); //r=b-A*x
-    pcdata = setupPCdata(pcdata,pctype,n,A);
-    pcret = PC_Solve(n,r,A,pctype,pcdata); //Solve M*z0=r0
+    pcdata = setupPCdata(pcdata,pctpye,n,A);
+    pcret = PC_Solve(pmd, n,r,A,L,U,pctype,pcdata); //Solve M*z0=r0
     z = pcret.sol;
     p = z;
 
@@ -48,7 +47,7 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, float* b, 
         r = VecAdd1(n,r,Ap,-alpha); // r=r-alpha*Ap
         rnorm = innerProd1(n,r,r); // rnorm=r'*r;
         if (sqrt(rnorm) < tol) break; // Check convergence
-        pcret = PC_Solve(n,r,A,pctype,pcdata); //Solve M*z=r
+        pcret = PC_Solve(pmd, n,r,A,L,U,pctype,pcdata); //Solve M*z=r
         z = pcret.sol;
         rsnew = innerProd1(n,r,z); // rsnew = r'*z
         p = VecAdd1(n,z,p,(rsnew / rsold)); // p=z+(rsnew/rsold)*p
@@ -63,8 +62,8 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, float* b, 
 
 
 void PCCG_CSRMPI_timer_output(int ntimer, struct par_multdat pmd, float* x,
- float* xsol, float* b, float* xguess, struct A_csr A_CSR, float tol, int dim, char* pctype){
-    
+        float* xsol, float* b, float* xguess, struct A_csr A_CSR, struct A_csr L_CSR, struct A_csr U_CSR, float tol, int dim, char* pctype){
+
     int rank = pmd.rank_d;
     int N = pmd.n_d;
     int nwrks = pmd.nwrks_d;
@@ -72,8 +71,8 @@ void PCCG_CSRMPI_timer_output(int ntimer, struct par_multdat pmd, float* x,
     struct CGret cgret;
     // Start Timer
     beg = clock();
-        
-    for(int j=0; j<ntimer; j++){cgret = mpiPCCG_solveCSR(pmd,A_CSR,b,xguess,tol,pctype);}
+
+    for(int j=0; j<ntimer; j++){cgret = mpiPCCG_solveCSR(pmd,A_CSR,L_CSR,U_CSR,b,xguess,tol,pctype);}
     xsol = cgret.x;
     int iters = cgret.iter;
     // End timer
@@ -93,7 +92,7 @@ void PCCG_CSRMPI_timer_output(int ntimer, struct par_multdat pmd, float* x,
 
 
 void cg_Output_verify_v2(struct CGret cgret, struct CGret cgretcsr, struct CGret pccgretcsr,
- float* x, float* b, float** A, int n, int rank)
+        float* x, float* b, float** A, int n, int rank)
 {
     if (rank == 0)
     {   

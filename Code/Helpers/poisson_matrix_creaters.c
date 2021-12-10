@@ -10,8 +10,8 @@
 
 struct A_csr {
     float* val;
-    float* col_ind;
-    float* row_ptr;
+    int* col_ind;
+    int* row_ptr;
 };
 
 struct A_dia {
@@ -24,11 +24,11 @@ float **create1dPoissonMat(int n){
     int i, j;
     float **A;
     A = malloc(sizeof(float*) * n);
-     
+
     for(i = 0; i < n; i++) {
         A[i] = malloc(sizeof(float*) * n);
     }
- 
+
     for(i = 0; i < n; i++){
         for(j = 0; j < n; j++){
             A[i][j] = 0;
@@ -37,6 +37,173 @@ float **create1dPoissonMat(int n){
         }
     }
     return A;
+}
+
+float **createPoissonILU(int n, float **A){
+    int i, k, j;
+    for(i = 1; i < n; i++){
+        for(k = 0; k < i; k++){
+            if (A[i][k] != 0){
+                A[i][k] = A[i][k] / A[k][k];
+                for(j = k + 1; j < n; j++){
+                    if (A[i][j] != 0){
+                        A[i][j] = A[i][j] - A[i][k] * A[k][j];
+                    }
+                } 
+            }
+        }
+    }
+    return A;
+}
+
+float **getLfromPoissonILU(int n, float **ILU){
+    int i, j;
+    float** L = malloc(sizeof(float*) * n);
+    L[0][0] = 1;
+    for(i = 0; i < n; i++){
+        L[i][i] = 1;
+        for(j = 0; j < i; j++){
+            L[i][j] = ILU[i][j];
+        }
+    }
+    return L;
+}
+
+float **getUfromPoissonILU(int n, float **ILU){
+    int i, j;
+    float** U = malloc(sizeof(float*) * n);
+    for(i = 0; i < n; i++){
+        for(j = i; j >= i; j++){
+            U[i][j] = ILU[i][j];
+        }
+    }
+    return U;
+}
+
+
+
+int find_l(int row, int col, int nnz, struct A_csr *A_ptr){
+	int l,i;
+	int next_row = A_ptr->row_ptr[row+1];
+	for (i = (int) A_ptr->row_ptr[row]; i < next_row; i++){
+		if ((int) A_ptr->col_ind[i] == col){
+			l = i;
+			break;
+		}
+	}
+	if (i == next_row){
+		l = nnz;
+	}
+	return l;
+}
+
+struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_ptr){
+	struct A_csr ILU_csr;
+	int nnz = n * n_diag - offset;
+
+	//copy A
+	ILU_csr.val = malloc(sizeof(float*) * (nnz));
+	for (int a = 0; a < nnz; a++){ILU_csr.val[a] = A_ptr->val[a];}
+	ILU_csr.row_ptr = A_ptr->row_ptr;
+	ILU_csr.col_ind = A_ptr->col_ind;
+
+	int l;
+    int i, k, j;
+	int ik, kk, ij, kj;
+    for(i = 1; i < n; i++){
+        for(k = 0; k < i; k++){
+			//find index correspoinding to index ik 
+			ik = find_l(i, k, nnz, A_ptr);
+				
+			//find index corresponding to index kk
+			kk = find_l(k, k, nnz, A_ptr);
+			if ((ik != nnz) && (kk != nnz)){
+				ILU_csr.val[ik] = ILU_csr.val[ik] / ILU_csr.val[kk];
+
+				for (j = k + 1; j < n; j++){
+					//find index corresponding to index ij
+					ij = find_l(i, j, nnz, A_ptr);
+
+					//find index corresponding to index kj
+					kj = find_l(k, j, nnz, A_ptr);
+
+					//value at index kj can be zero, resulting in ILU[ij] == A[ij]
+					if ((ij != nnz) && (kj == nnz)){
+						ILU_csr.val[ij] = ILU_csr.val[ij];
+					}
+					if ((ij != nnz) && (kj != nnz)){
+						ILU_csr.val[ij] = ILU_csr.val[ij] - ILU_csr.val[ik] * ILU_csr.val[kj];
+					}
+				}
+            }
+        }
+    }
+    return ILU_csr;
+}
+
+struct A_csr getLfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *ILU_ptr){
+	struct A_csr L_csr;
+	int nnz = n * ((n_diag + 1) / 2) - offset / 2; //adjust for triangular matrix
+
+	L_csr.val = malloc(sizeof(float*) * (nnz));
+	L_csr.row_ptr = malloc(sizeof(int*) * (n + 1));
+	L_csr.col_ind = malloc(sizeof(int*) * (nnz));
+
+	int row, col;	
+	int row_ptr, next_row_ptr;
+	int l,i;
+	l = 0;
+	for (row = 0; row < n; row++){
+		row_ptr = ILU_ptr->row_ptr[row];
+		next_row_ptr = ILU_ptr->row_ptr[row+1];
+		for (i = row_ptr; i < next_row_ptr; i++){
+			col = ILU_ptr->col_ind[i];
+			if (row == col){
+				L_csr.val[l] = 1;
+				L_csr.col_ind[l] = col;
+				L_csr.row_ptr[row+1] = l+1;
+				l += 1;
+			}
+			if (row > col){
+
+				L_csr.val[l] = ILU_ptr->val[i];
+				L_csr.col_ind[l] = col;
+				l += 1;
+			}
+
+		}
+	}
+	return L_csr;
+}
+
+struct A_csr getUfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *ILU_ptr){
+	struct A_csr U_csr;
+	int nnz = n * ((n_diag + 1) / 2) - offset / 2; //adjust for triangular matrix
+
+	U_csr.val = malloc(sizeof(float*) * (nnz));
+	U_csr.row_ptr = malloc(sizeof(int*) * (n + 1));
+	U_csr.col_ind = malloc(sizeof(int*) * (nnz));
+
+	int row, col;	
+	int row_ptr, next_row_ptr;
+	int l,i;
+	l = 0;
+	for (row = 0; row < n; row++){
+		row_ptr = ILU_ptr->row_ptr[row];
+		next_row_ptr = ILU_ptr->row_ptr[row+1];
+		for (i = row_ptr; i < next_row_ptr; i++){
+			col = ILU_ptr->col_ind[i];
+			if (row <= col){
+				U_csr.val[l] = ILU_ptr->val[i];
+				U_csr.col_ind[l] = col;
+				l += 1;
+			}
+
+		}
+	
+		U_csr.row_ptr[row+1] = l;
+	}
+	return U_csr;
 }
 
 struct A_csr create1dPoissonMatCSR(int n){
