@@ -6,6 +6,7 @@
 
 #include "poisson_matrix_creaters.c"
 #include "mg.c"
+#include "helpers.c"
 #include "mpi_helpers.c"
 
 struct PCret {
@@ -27,12 +28,12 @@ float* getCSRdiagonal(int n, struct A_csr A){
             col = A.col_ind[j];
             if(col==i){
                 d[col] = A.val[j];
-                col++;
-                if(col>n){break;}
-                }
+                col++; 
+                if(col>n){break;}   
             }
         }
-    return d;
+    }     
+    return d; 
 }
 
 void setup_mg_pc(struct PCdata* pcdata, int n, struct A_csr* A, unsigned int num_levels, bool is_2d) {
@@ -189,15 +190,20 @@ struct PCret mg_pc_solve(struct par_multdat pmd, struct PCdata pcdata, float* r)
 
 
 /*Preconditioner solve*/
-struct PCret PC_Solve(struct par_multdat pmd, int n, float* r, struct A_csr A, char* pctype, struct PCdata pcdata){
+struct PCret PC_Solve(struct par_multdat pmd, int n, float* r, struct A_csr A, struct A_csr L, struct A_csr U, char* pctype, struct PCdata pcdata){
     /* printf("PC_Solve .%s.\n", pctype); */
     struct PCret pcret;
 
     if (strcmp(pctype,"Jacobi")==0){
     	pcret = Jacobi_PC_Solve(n,A,r, pcdata);
-    } else if (strcmp(pctype, "MG2D") == 0 ||
-               strcmp(pctype, "MG1D") == 0) {
+    } 
+    else if (strcmp(pctype, "MG2D") == 0 ||
+             strcmp(pctype, "MG1D") == 0) {
         pcret = mg_pc_solve(pmd, pcdata, r);
+        pcret = Jacobi_PC_Solve(n,A,r, pcdata);
+    }
+    else if (strcmp(pctype, "ILU")==0){
+        pcret.sol = mpiTriangularSolveCSR1(pmd, r, L, U);
     }
 
     return pcret;

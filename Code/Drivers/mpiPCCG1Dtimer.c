@@ -27,6 +27,10 @@ int main(int argc, char *argv[])
     struct A_csr A_CSR= create1dPoissonMatCSR(N);
     struct A_dia A_DIA= create1dPoissonMatDIA(N);
     int n_diag = 3;
+    int offset = 2;
+    struct A_csr ILU_CSR = createPoissonILUCSR(N, n_diag, offset, &A_CSR);
+    struct A_csr L_CSR = getLfromPoissonILUCSR(N, n_diag, offset, &ILU_CSR);
+    struct A_csr U_CSR = getUfromPoissonILUCSR(N, n_diag, offset, &ILU_CSR);
     float* x = create1dRandRHS(N);
     float* b = create1dZeroVec(N);  float* b_p = create1dZeroVec(N);
     float* b_csr = create1dZeroVec(N);  float* b_p_csr = create1dZeroVec(N);
@@ -64,7 +68,7 @@ int main(int argc, char *argv[])
     struct par_multdat pmdat = parmult_struct_assign(offsvec,rows,rank,N,nwrks,n_diag);
 
     //b_p = mpiMatVecProduct1(pmdat, x, A);
-    b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);
+    b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);        
     //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);
 
 
@@ -73,13 +77,20 @@ int main(int argc, char *argv[])
     //CG_DIAMPI_timer_output(ntimerd,pmdat,x,xsol,b_p_csr,xguess,A_DIA,tol,dim);
 
     char pctype[10];
+    //MG
     strcpy(pctype,"MG1D"); //pctype = "Jacobi";
-    PCCG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim,pctype);
 
+    //Jacobi PCs
+    //strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
+
+    //ILU PC
+    //strcpy(pctype,"ILU");
+  
+    PCCG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,L_CSR,U_CSR,tol,dim,pctype);
 
     /*mult_Output_verify(N,n_diag,numprocs,rank,offsvec,
-        A,A_CSR,A_DIA,x,b,b_csr,b_dia,b_p,b_p_csr,b_p_dia); // Print output on rank 0 to validate mult routines
-    */
+      A,A_CSR,A_DIA,x,b,b_csr,b_dia,b_p,b_p_csr,b_p_dia); // Print output on rank 0 to validate mult routines
+      */
 
     /*cg_Output_verify(cgret_p,cgretcsr_p,cgretdia_p,x,b_p_csr,A,N,rank); // Print output on rank 0 to validate CG routines */
 
