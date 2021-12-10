@@ -9,17 +9,6 @@
 #include <math.h>
 #include "spmatrix.h"
 
-struct A_csr {
-    float* val;
-    int* col_ind;
-    int* row_ptr;
-};
-
-struct A_dia {
-    float** val;
-    float* off;
-};
-
 /*Create a 1D representation of matrices*/
 float **create1dPoissonMat(int n){
     int i, j;
