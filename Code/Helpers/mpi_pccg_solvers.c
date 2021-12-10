@@ -33,7 +33,7 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, struct A_c
     x = VecAdd1(n,xg,r,0);
     dum = mpiMatVecProductCSR1(pmd,xg,A);
     r = VecAdd1(n,b,dum,-1); //r=b-A*x
-    pcdata = setupPCdata(pcdata,pctpye,n,A);
+    pcdata = setupPCdata(pcdata,pctype,n,A);
     pcret = PC_Solve(pmd, n,r,A,L,U,pctype,pcdata); //Solve M*z0=r0
     z = pcret.sol;
     p = z;
