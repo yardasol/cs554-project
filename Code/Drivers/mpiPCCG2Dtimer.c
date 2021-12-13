@@ -16,6 +16,7 @@
 
 int main(int argc, char *argv[])
 {
+  fprintf(stderr, "main()\n");
 
     int N = atoi(argv[1]);
     int ntimerf, ntimerc, ntimerd;
@@ -28,6 +29,8 @@ int main(int argc, char *argv[])
     int offset = 2*(N+1);
     int ntimer = 10;
     float tol = 0.000001;
+
+    fprintf(stderr, "Starting solver... (%d %d %d)\n", ntimerf, ntimerc, ntimerd); 
 
     struct CGret cgret, cgretcsr, cgretdia;
     struct CGret cgret_p, cgretcsr_p, cgretdia_p;
@@ -51,12 +54,16 @@ int main(int argc, char *argv[])
     float* xsol = create1dZeroVec(N2D);
     float* xguess = create1dZeroVec(N2D);
 
+    fprintf(stderr, "created all vectors\n");
+
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
 
+    fprintf(stderr, "set up MPI\n");
+
     if (numprocs < 2 ) {
-        printf("Need at least two MPI tasks. Quitting...\n");
+      fprintf(stderr, "Need at least two MPI tasks. Quitting...\n");
         MPI_Abort(MPI_COMM_WORLD, rc);
         exit(1);
     }
@@ -70,20 +77,30 @@ int main(int argc, char *argv[])
     // make sure all workers receive the same random vec x created by master
     communicate_xvec(N2D,rank,nwrks,x);
 
+    fprintf(stderr, "created xvec\n");
+
     // create struct with data for parallel mult routines
     struct par_multdat pmdat = parmult_struct_assign(offsvec,rows,rank,N2D,nwrks,n_diag);
+
+    fprintf(stderr, "pmdat\n");
 
     //b_p = mpiMatVecProduct1(pmdat, x, A);
     b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);        
     //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);    
 
+    fprintf(stderr, "mpi matvec\n");
+
     /*cgret_p = mpiCGsolveFull(pmdat,A,b_p_csr,xguess,tol);
       cgretcsr_p = mpiCGsolveCSR(pmdat,A_CSR,b_p_csr,xguess,tol);
       cgretdia_p = mpiCGsolveDIA(pmdat,A_DIA,b_p_csr,xguess,tol);*/
 
-    CG_FullMPI_timer_output(ntimerf,pmdat,x,xsol,b_p_csr,xguess,A,tol,dim);
+    if (rank == 0)
+      fprintf(stderr, "About to run CG iterations...\n");
+    /* CG_FullMPI_timer_output(ntimerf,pmdat,x,xsol,b_p_csr,xguess,A,tol,dim); */
     CG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim);
-    CG_DIAMPI_timer_output(ntimerd,pmdat,x,xsol,b_p_csr,xguess,A_DIA,tol,dim);
+    /* CG_DIAMPI_timer_output(ntimerd,pmdat,x,xsol,b_p_csr,xguess,A_DIA,tol,dim); */
+    if (rank == 0)
+      fprintf(stderr, "Finished\n");
 
     char pctype[10];
     //Multigrid
@@ -94,15 +111,12 @@ int main(int argc, char *argv[])
 
     //ILU PC
     //strcpy(pctype,"ILU");
-  
+
+    if (rank == 0)
+      fprintf(stderr, "About to run PCG iterations...\n");
     PCCG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,L_CSR,U_CSR,tol,dim,pctype);
-
-    /*mult_Output_verify(N,n_diag,numprocs,rank,offsvec,
-      A,A_CSR,A_DIA,x,b,b_csr,b_dia,b_p,b_p_csr,b_p_dia); // Print output on rank 0 to validate mult routines
-      */
-
-    /*cg_Output_verify(cgret_p,cgretcsr_p,cgretdia_p,x,b_p_csr,A,N2D,rank); // Print output on rank 0 to validate CG routines */
-
+    if (rank == 0)
+      fprintf(stderr, "Finished.\n");
 
     MPI_Finalize();
     return 0;
