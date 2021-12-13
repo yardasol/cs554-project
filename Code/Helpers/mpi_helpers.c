@@ -57,9 +57,9 @@ float* mpiMatVecProduct1( struct par_multdat pmd, float* x, float** a ) {
     int numworkers = pmd.nwrks_d;
     int* offsv = pmd.offsetv_d;
     offset = pmd.offsetv_d[rank-1];
-    rows = pmd.rows_d;        
-    float* b = create1dZeroVec(n); 
-    MPI_Status status; 
+    rows = pmd.rows_d;
+    float* b = create1dZeroVec(n);
+    MPI_Status status;
 
     if (rank == 0)
     {
@@ -76,8 +76,8 @@ float* mpiMatVecProduct1( struct par_multdat pmd, float* x, float** a ) {
         {
             ioff = i+offset;
             for (j=0; j< n; j++)
-            { b[ioff] = b[ioff] + a[ioff][j] * x[j]; } 
-        }  
+            { b[ioff] = b[ioff] + a[ioff][j] * x[j]; }
+        }
         MPI_Send(&b[offset], rows, MPI_FLOAT, 0, 1, MPI_COMM_WORLD);
         MPI_Recv(b, n, MPI_FLOAT, 0, 2, MPI_COMM_WORLD, &status);
         return b;
@@ -94,9 +94,9 @@ float* mpiMatVecProductCSR1( struct par_multdat pmd, float* y, struct A_csr A)
     int numworkers = pmd.nwrks_d;
     int* offsv = pmd.offsetv_d;
     offset = pmd.offsetv_d[rank-1];
-    rows = pmd.rows_d;        
-    float* b = create1dZeroVec(n); 
-    MPI_Status status; 
+    rows = pmd.rows_d;
+    float* b = create1dZeroVec(n);
+    MPI_Status status;
 
     if (rank == 0)
     {
@@ -108,7 +108,7 @@ float* mpiMatVecProductCSR1( struct par_multdat pmd, float* y, struct A_csr A)
         return b;
     }
 
-    if (rank > 0) {             
+    if (rank > 0) {
         for (i = 0; i<rows; i++)
         {
             ioff = i+offset;
@@ -116,6 +116,54 @@ float* mpiMatVecProductCSR1( struct par_multdat pmd, float* y, struct A_csr A)
             {
                 col = A.col_ind[j];
                 b[ioff] += A.val[j] * y[col];
+            }
+        }
+        MPI_Send(&b[offset], rows, MPI_FLOAT, 0, 1, MPI_COMM_WORLD);
+        MPI_Recv(b, n, MPI_FLOAT, 0, 2, MPI_COMM_WORLD, &status);
+        return b;
+    }
+}
+
+float* mpiMatVecInvDProductCSR1( struct par_multdat pmd, float* y, struct A_csr A)
+{
+    int source, dest, rows, offset, i, j, ind, ioff, col;
+
+    int rank = pmd.rank_d;
+    int n = pmd.n_d;
+    int numworkers = pmd.nwrks_d;
+    int* offsv = pmd.offsetv_d;
+    offset = pmd.offsetv_d[rank-1];
+    rows = pmd.rows_d;
+    float* b = create1dZeroVec(n);
+    MPI_Status status;
+    float diag;
+
+    if (rank == 0)
+    {
+        for (i=1; i<=numworkers; i++) {
+            source = i; ind = offsv[i-1]; rows = offsv[i]-offsv[i-1];
+            MPI_Recv(&b[ind], rows, MPI_FLOAT, source, 1, MPI_COMM_WORLD, &status);
+        }
+        for (i=1; i<=numworkers; i++) {MPI_Send(b, n, MPI_FLOAT, i, 2, MPI_COMM_WORLD);}
+        return b;
+    }
+
+    if (rank > 0) {
+        for (i = 0; i<rows; i++)
+        {
+            ioff = i+offset;
+            diag = 0.f;
+            for (int j=A.row_ptr[ioff]; j<A.row_ptr[ioff+1]; j++) {
+                if (A.col_ind[j] == ioff) {
+                    diag = A.val[j];
+                    break;
+                }
+            }
+
+            for (int j=A.row_ptr[ioff]; j<A.row_ptr[ioff+1]; j++)
+            {
+                col = A.col_ind[j];
+                b[ioff] += (A.val[j] / diag) * y[col];
             }
         }
         MPI_Send(&b[offset], rows, MPI_FLOAT, 0, 1, MPI_COMM_WORLD);
@@ -147,8 +195,8 @@ float* mpiMatVecProductDIA1( struct par_multdat pmd, float* y, struct A_dia A)
         return b;
     }
 
-    if (rank > 0) {  
-        int offs, start, end;           
+    if (rank > 0) {
+        int offs, start, end;
         for (i = 0; i<rows; i++)
         {
             ioff = i+offset;
@@ -180,7 +228,7 @@ float* mpiVecAdd1( struct par_multdat pmd, float* a, float* b, float k)
     rows = pmd.rows_d;
     MPI_Status status;
 
-    float* c = create1dZeroVec(n);    
+    float* c = create1dZeroVec(n);
 
     if (rank == 0)
     {
@@ -192,7 +240,7 @@ float* mpiVecAdd1( struct par_multdat pmd, float* a, float* b, float k)
         return c;
     }
 
-    if (rank > 0) {             
+    if (rank > 0) {
         for (i = 0; i<rows; i++)
         {
             ioff = i+offset;
@@ -228,7 +276,7 @@ float mpiInnerProd1( struct par_multdat pmd, float* a, float* b)
         return c;
     }
 
-    if (rank > 0) {             
+    if (rank > 0) {
         for (i = 0; i<rows; i++)
         {
             ioff = i+offset;
@@ -249,15 +297,15 @@ float* mpiTriangularSolveCSR1( struct par_multdat pmd, float* r, struct A_csr L,
     int rank = pmd.rank_d;
     int n = pmd.n_d;
     int numworkers = pmd.nwrks_d;
-    int* offsv = pmd.offsetv_d;  
+    int* offsv = pmd.offsetv_d;
     offset = pmd.offsetv_d[rank-1];
-    rows = pmd.rows_d;        
-    float* y = create1dZeroVec(n); 
-    float* z = create1dZeroVec(n); 
-    MPI_Status status; 
+    rows = pmd.rows_d;
+    float* y = create1dZeroVec(n);
+    float* z = create1dZeroVec(n);
+    MPI_Status status;
 
     if (rank == 0)
-    {           
+    {
         int row, col;
         int row_ptr, next_row_ptr;
         int i;
@@ -289,11 +337,11 @@ float* mpiTriangularSolveCSR1( struct par_multdat pmd, float* r, struct A_csr L,
     }
 
     MPI_Bcast(z, n, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    return z; 
+    return z;
 }
 
 /*MPI Verifiers*/
-void mult_Output_verify(int N, int n_diag, int numprocs, int rank, int* offsvec, 
+void mult_Output_verify(int N, int n_diag, int numprocs, int rank, int* offsvec,
         float** A, struct A_csr A_CSR, struct A_dia A_DIA, float* x, float*b,
         float* b_csr, float* b_dia, float* b_p, float* b_p_csr, float* b_p_dia)
 {
@@ -304,8 +352,8 @@ void mult_Output_verify(int N, int n_diag, int numprocs, int rank, int* offsvec,
         print_vec(N,x);
         print_vec(N,b_p);
         print_vec(N,b_p_csr);
-        /*print_vec(N,b_p_dia);     
-          print_vec(N,b); print_vec(N,b0); 
+        /*print_vec(N,b_p_dia);
+          print_vec(N,b); print_vec(N,b0);
           print_vec(N,b_csr); print_vec(N,b_dia);*/
         b = matVecProduct1(N,x,A);
         b_csr = matVecProductCSR1(N,x,A_CSR);

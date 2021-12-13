@@ -45,7 +45,6 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
 
-
     if (numprocs < 2 ) {
         printf("Need at least two MPI tasks. Quitting...\n");
         MPI_Abort(MPI_COMM_WORLD, rc);
@@ -65,22 +64,22 @@ int main(int argc, char *argv[])
     struct par_multdat pmdat = parmult_struct_assign(offsvec,rows,rank,N,nwrks,n_diag);
 
     //b_p = mpiMatVecProduct1(pmdat, x, A);
-    b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);        
-    //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);    
+    b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);
+    //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);
 
     cgret_p = mpiCGsolveFull(pmdat,A,b_p_csr,xguess,tol);
     cgretcsr_p = mpiCGsolveCSR(pmdat,A_CSR,b_p_csr,xguess,tol);
     cgretdia_p = mpiCGsolveDIA(pmdat,A_DIA,b_p_csr,xguess,tol);
 
     //MG
-    strcpy(pctype,"MG1D"); //pctype = "Jacobi";
+    strcpy(pctype, "MG1D"); //pctype = "Jacobi";
 
     //Jacobi PC
     //strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
 
     //ILU PC
     //strcpy(pctype,"ILU");
-    
+
     pccgretcsr_p = mpiPCCG_solveCSR(pmdat,A_CSR,L_CSR,U_CSR,b_p_csr,xguess,tol,pctype);
 
 

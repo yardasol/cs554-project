@@ -21,6 +21,7 @@ struct MGData {
     unsigned int num_levels;
     unsigned int num_pre_relax;
     unsigned int num_post_relax;
+    unsigned int num_coarsest_relax;
 };
 
 /**

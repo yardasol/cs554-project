@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "spmatrix.h"
+#include <string.h>
 
 /*Create a 1D representation of matrices*/
 float **create1dPoissonMat(int n){
@@ -39,7 +40,7 @@ float **createPoissonILU(int n, float **A){
                     if (A[i][j] != 0){
                         A[i][j] = A[i][j] - A[i][k] * A[k][j];
                     }
-                } 
+                }
             }
         }
     }
@@ -94,17 +95,20 @@ struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_
 	//copy A
 	ILU_csr.val = malloc(sizeof(float*) * (nnz));
 	for (int a = 0; a < nnz; a++){ILU_csr.val[a] = A_ptr->val[a];}
-	ILU_csr.row_ptr = A_ptr->row_ptr;
-	ILU_csr.col_ind = A_ptr->col_ind;
+
+        ILU_csr.row_ptr = malloc(sizeof(float*) * (n + 1));
+        memcpy(ILU_csr.row_ptr, A_ptr->row_ptr, sizeof(float) * (n + 1));
+        ILU_csr.col_ind = malloc(sizeof(float*) * nnz);
+        memcpy(ILU_csr.col_ind, A_ptr->col_ind, sizeof(float) * nnz);
 
 	int l;
     int i, k, j;
 	int ik, kk, ij, kj;
     for(i = 1; i < n; i++){
         for(k = 0; k < i; k++){
-			//find index correspoinding to index ik 
+			//find index correspoinding to index ik
 			ik = find_l(i, k, nnz, A_ptr);
-				
+
 			//find index corresponding to index kk
 			kk = find_l(k, k, nnz, A_ptr);
 			if ((ik != nnz) && (kk != nnz)){
@@ -139,7 +143,7 @@ struct A_csr getLfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 	L_csr.row_ptr = malloc(sizeof(int*) * (n + 1));
 	L_csr.col_ind = malloc(sizeof(int*) * (nnz));
 
-	int row, col;	
+	int row, col;
 	int row_ptr, next_row_ptr;
 	int l,i;
 	l = 0;
@@ -174,7 +178,7 @@ struct A_csr getUfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 	U_csr.row_ptr = malloc(sizeof(int*) * (n + 1));
 	U_csr.col_ind = malloc(sizeof(int*) * (nnz));
 
-	int row, col;	
+	int row, col;
 	int row_ptr, next_row_ptr;
 	int l,i;
 	l = 0;
@@ -190,7 +194,7 @@ struct A_csr getUfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 			}
 
 		}
-	
+
 		U_csr.row_ptr[row+1] = l;
 	}
 	return U_csr;

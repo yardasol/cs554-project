@@ -28,22 +28,32 @@ float* getCSRdiagonal(int n, struct A_csr A){
             col = A.col_ind[j];
             if(col==i){
                 d[col] = A.val[j];
-                col++; 
-                if(col>n){break;}   
+                col++;
+                if(col>n){break;}
             }
         }
-    }     
-    return d; 
+    }
+    return d;
 }
 
-void setup_mg_pc(struct PCdata* pcdata, int n, struct A_csr* A, unsigned int num_levels, bool is_2d) {
-    assert(num_levels >= 2);
+void setup_mg_pc(struct PCdata* pcdata, int n, struct A_csr Aval, int num_levels, bool is_2d) {
+    if (num_levels < 2) {
+        if (is_2d) {
+            num_levels = (int) log2f(sqrt(n));
+        } else {
+            num_levels = (int) log2f(n);
+        }
+    }
 
     pcdata->mg = calloc(1, sizeof(struct MGData));
     pcdata->mg->num_levels = num_levels;
     pcdata->mg->levels = calloc(num_levels, sizeof(struct MGLevelData));
-    pcdata->mg->num_pre_relax = 2;
-    pcdata->mg->num_post_relax = 2;
+    pcdata->mg->num_pre_relax = 4;
+    pcdata->mg->num_post_relax = 4;
+    pcdata->mg->num_coarsest_relax = 4;
+
+    struct A_csr* A = malloc(sizeof(struct A_csr));
+    memcpy(A, &Aval, sizeof(struct A_csr));
 
     struct MGLevelData* levels = pcdata->mg->levels;
     /* Set up first MG level */
@@ -80,12 +90,6 @@ void setup_mg_pc(struct PCdata* pcdata, int n, struct A_csr* A, unsigned int num
         levels[i].n_pts = n_coarse;
         levels[i].pmdat = parmult_create(n_coarse);
     }
-
-    /* for (unsigned int i = 0; i < num_levels; i++) { */
-    /*     printf("Level %u\n", i); */
-    /*     printf("Number of points %u\n", levels[i].n_pts); */
-    /*     printf("Number of points per dim %u\n", levels[i].n_pts_per_dim); */
-    /* } */
 }
 
 // Setup data in PCdata struct for info to be extracted before solve
@@ -94,14 +98,13 @@ struct PCdata setupPCdata(struct PCdata pcdata, char* pctype, int n, struct A_cs
     if (strcmp(pctype,"Jacobi")==0){
         pcdata.diag = getCSRdiagonal(n,A);
     } else if (strcmp(pctype, "MG2D") == 0) {
-        setup_mg_pc(&pcdata, n, &A, 2, 1);
+        setup_mg_pc(&pcdata, n, A, -1, 1);
     } else if (strcmp(pctype, "MG1D") == 0) {
-        setup_mg_pc(&pcdata, n, &A, 2, 0);
+        setup_mg_pc(&pcdata, n, A, -1, 0);
     }
+
     return pcdata;
 }
-
-
 
 struct PCret Jacobi_PC_Solve(int n, struct A_csr A, float* r, struct PCdata pcdata){
     struct PCret pcret;
@@ -121,69 +124,87 @@ void mg_solve_recursive(struct par_multdat pmd, struct MGData* mg, struct MGLeve
     int n = levels[level].n_pts;
     struct A_csr* A = levels[level].A;
 
-    /* pre-compute omega * D^{-1} b */
+    /* pre-compute omega * D^{-1} */
     const float omega = 2.f/3.f;
-    float* omegaDinvB = create1dZeroVec(n);
+    float* omegaDinv = create1dZeroVec(n);
     for (unsigned int i = 0; i < n; i++) {
-        omegaDinvB[i] = (b[i] / levels[level].diag[i]) * omega;
+        omegaDinv[i] = (omega / levels[level].diag[i]);
     }
 
     /* Jacobi pre-relax */
     for (unsigned int i = 0; i < mg->num_pre_relax; i++) {
-        float* Ax = mpiMatVecProductCSR1(levels[level].pmdat, x, *levels[level].A);
+        float* DinvAx = mpiMatVecInvDProductCSR1(levels[level].pmdat, x, *levels[level].A);
 
         /* Perform a weighted Jacobi sweep */
         for (unsigned int j = 0; j < n; j++) {
-            x[i] += omegaDinvB[i] - omega * (Ax[i] / levels[level].diag[i]);
+            x[j] = omegaDinv[j] * b[j] + x[j] - omega * DinvAx[j];
         }
 
-        free(Ax);
+        free(DinvAx);
     }
 
     /* Coarsen and recurse */
-    if (level < mg->num_levels - 1) {
+    /* if (level < mg->num_levels - 1) { */
+    if (0) {
         /* Coarsen */
         unsigned int n_coarse = levels[level+1].n_pts;
-        float* x_H = mpiMatVecProductCSR1(levels[level + 1].pmdat, x, *levels[level+1].R);
-        float* b_H = mpiMatVecProductCSR1(levels[level + 1].pmdat, b, *levels[level+1].R);
-        mg_solve_recursive(pmd, mg, levels, level + 1, b_H, x_H);
 
-        /* Interpolate and copy solution */
-        float* x_h = mpiMatVecProductCSR1(levels[level].pmdat, x_H, *levels[level+1].P);
+        float* r_h = mpiMatVecProductCSR1(levels[level].pmdat, x, *levels[level].A); /* r_h = A * x */
         for (unsigned int i = 0; i < n; i++) {
-            x[i] = x_h[i];
+            r_h[i] = b[i] - r_h[i]; /* r_h <- b - Ax */
+        }
+        float* r_H = mpiMatVecProductCSR1(levels[level + 1].pmdat, r_h, *levels[level + 1].R);
+        float* e_H = create1dZeroVec(levels[level + 1].n_pts);
+
+        mg_solve_recursive(pmd, mg, levels, level + 1, r_H, e_H);
+
+        /* Interpolate and add error */
+        float* e_h = mpiMatVecProductCSR1(levels[level].pmdat, e_H, *levels[level+1].P);
+        for (unsigned int i = 0; i < n; i++) {
+            x[i] = x[i] + e_h[i];
         }
 
-        free(x_H);
-        free(b_H);
-        free(x_h);
+        free(e_h);
+        free(e_H);
+        free(r_H);
+        free(r_h);
+    } else {
+        for (unsigned int i = 0; i < mg->num_coarsest_relax; i++) {
+            float* DinvAx = mpiMatVecInvDProductCSR1(levels[level].pmdat, x, *levels[level].A);
+
+            /* Perform a weighted Jacobi sweep */
+            for (unsigned int j = 0; j < n; j++) {
+                x[j] = omegaDinv[j] * b[j] + x[j] - omega * DinvAx[j];
+            }
+
+            free(DinvAx);
+        }
     }
 
     /* Jacobi post-relax */
     for (unsigned int i = 0; i < mg->num_pre_relax; i++) {
-        float* Ax = mpiMatVecProductCSR1(levels[level].pmdat, x, *levels[level].A);
+        float* DinvAx = mpiMatVecInvDProductCSR1(levels[level].pmdat, x, *levels[level].A);
 
         /* Perform a weighted Jacobi sweep */
         for (unsigned int j = 0; j < n; j++) {
-            x[i] += omegaDinvB[i] - omega * (Ax[i] / levels[level].diag[i]);
+            x[j] = omegaDinv[j] * b[j] + x[j] - omega * DinvAx[j];
         }
 
-        free(Ax);
+        free(DinvAx);
     }
+
+    free(omegaDinv);
 }
 
 struct PCret mg_pc_solve(struct par_multdat pmd, struct PCdata pcdata, float* r){
     struct PCret pcret;
-    /* Approximately solve Ar = 0 */
+    /* Approximately solve Az = r */
     struct MGData* mg = pcdata.mg;
     struct MGLevelData* levels = mg->levels;
 
     float* z = create1dZeroVec(levels[0].n_pts);
     mg_solve_recursive(pmd, mg, levels, 0, r, z);
     pcret.sol = z;
-
-    /* printf("%d\n", levels[0].n_pts); */
-    /* print_vec(levels[1].n_pts, z); */
 
     return pcret;
 }
@@ -196,14 +217,15 @@ struct PCret PC_Solve(struct par_multdat pmd, int n, float* r, struct A_csr A, s
 
     if (strcmp(pctype,"Jacobi")==0){
     	pcret = Jacobi_PC_Solve(n,A,r, pcdata);
-    } 
+    }
     else if (strcmp(pctype, "MG2D") == 0 ||
              strcmp(pctype, "MG1D") == 0) {
         pcret = mg_pc_solve(pmd, pcdata, r);
-        pcret = Jacobi_PC_Solve(n,A,r, pcdata);
     }
     else if (strcmp(pctype, "ILU")==0){
         pcret.sol = mpiTriangularSolveCSR1(pmd, r, L, U);
+    } else if (strcmp(pctype, "Identity") == 0) {
+        pcret.sol = copy_vec(n, r);
     }
 
     return pcret;

@@ -25,36 +25,41 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, struct A_c
     float rsold, rsnew, alpha, rnorm;
     float* Ap = create1dZeroVec(n);
     float* r = create1dZeroVec(n);
-    float* dum = create1dZeroVec(n);
+    float* Ax = create1dZeroVec(n);
     float* p = create1dZeroVec(n);
     float* x = create1dZeroVec(n);
     float* z = create1dZeroVec(n);
 
     x = VecAdd1(n,xg,r,0);
-    dum = mpiMatVecProductCSR1(pmd,xg,A);
-    r = VecAdd1(n,b,dum,-1); //r=b-A*x
+    Ax = mpiMatVecProductCSR1(pmd,xg,A);
+    r = VecAdd1(n,b,Ax,-1); //r=b-A*x
     pcdata = setupPCdata(pcdata,pctype,n,A);
+
     pcret = PC_Solve(pmd, n,r,A,L,U,pctype,pcdata); //Solve M*z0=r0
     z = pcret.sol;
-    p = z;
+    p = copy_vec(n, z);
 
-    rsold = innerProd1(n,r,z); //rsold=r'*r
+    rsold = innerProd1(n,r,z); //rsold=r*z
     int iters = 0;
     for (int i=0; i<n; i++){
         Ap = mpiMatVecProductCSR1(pmd,p,A); // Ap=A*p
         alpha = rsold / innerProd1(n,p,Ap); // alpha=rsold/(p'*Ap)
         x = VecAdd1(n,x,p,alpha); // x=x+alpha*p
         r = VecAdd1(n,r,Ap,-alpha); // r=r-alpha*Ap
+
         rnorm = innerProd1(n,r,r); // rnorm=r'*r;
         if (sqrt(rnorm) < tol) break; // Check convergence
+
         pcret = PC_Solve(pmd, n,r,A,L,U,pctype,pcdata); //Solve M*z=r
         z = pcret.sol;
-        rsnew = innerProd1(n,r,z); // rsnew = r'*z
+
+        rsnew = innerProd1(n,r,z); // rsnew = r*z
         p = VecAdd1(n,z,p,(rsnew / rsold)); // p=z+(rsnew/rsold)*p
+
         rsold = rsnew;
         iters = i;
     }
-    free(r); free(p); free(Ap); free(dum); free(z);
+    free(r); free(p); free(Ap); free(Ax); free(z);
     cgret.x = x;
     cgret.iter = iters;
     return cgret;

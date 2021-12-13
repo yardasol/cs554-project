@@ -308,7 +308,7 @@ struct A_csr* spkron(
 /*Inner product between two matrices*/
 float innerProd1(int n, float* a, float* b)
 {
-  float c;
+  float c = 0.f;
   for (int i=0; i<n; i++)
     c += a[i] * b[i];
   return c;

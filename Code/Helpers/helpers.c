@@ -123,6 +123,12 @@ void parmult_debugger(int n, int numprocs, float* b, float* b0, int* offsv) {
     return;
 }
 
+float* copy_vec(int n, float* f) {
+    float* out = malloc(sizeof(float) * n);
+    memcpy(out, f, sizeof(float) * n);
+    return out;
+}
+
 struct dynamic_array {
     void* data;
     unsigned int element_size;
