@@ -10,6 +10,8 @@
 #include "spmatrix.h"
 #include <string.h>
 
+#include "matrix_arithmetic.c"
+
 /*Create a 1D representation of matrices*/
 float **create1dPoissonMat(int n){
     int i, j;
@@ -86,6 +88,27 @@ int find_l(int row, int col, int nnz, struct A_csr *A_ptr){
 		l = nnz;
 	}
 	return l;
+}
+
+struct A_csr createIdentityCSR(int n) {
+    struct A_csr I;
+    const unsigned int nnz = n;
+    I.val = malloc(sizeof(float) * nnz);
+    for (unsigned int i = 0; i < nnz; i++) {
+        I.val[i] = 1.f;
+    }
+
+    I.row_ptr = malloc(sizeof(int) * (nnz + 1));
+    I.col_ind = malloc(sizeof(int) * n);
+
+    for (unsigned int i = 0; i < nnz; i++) {
+        I.row_ptr[i] = i;
+        I.col_ind[i] = i;
+    }
+
+    I.row_ptr[n] = nnz;
+
+    return I;
 }
 
 struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_ptr){
@@ -256,7 +279,7 @@ struct A_dia create1dPoissonMatDIA(int n){
 
 /*2D representation of matrices*/
 float **create2dPoissonMat(int size) {
-    // Total size of matrix: size^2 * size^2
+
     float **A;
     int n = size*size;
     int i,j;
@@ -288,41 +311,84 @@ float **create2dPoissonMat(int size) {
     return A;
 }
 
-struct A_csr create2dPoissonMatCSR(float ** matrix, int n){
-    int nnz, N2D;
-    float nnz_per_row;
-    N2D = n*n;
-    struct A_csr A;
-    // To change? Variable on different sizes. We can also just do another
-    // pass over matrix to see nnz total.
-    nnz_per_row = 4;
-    nnz = N2D*nnz_per_row-2;
-    A.val = malloc(sizeof(float*) * (nnz));
-    A.col_ind = malloc(sizeof(int*) * (nnz));
-    A.row_ptr = malloc(sizeof(int*) * (N2D+1));
-    A.row_ptr[0] = 0; // row_ptr @[0] is always 0
-    // Index of where to insert elements in the .val and .col_ind
-    int val_col_idx = 0;
-    int nnz_encountered = 0; // Total tally for row_ptr
-    int row_ptr_idx = 1; // Index position for row ptr
-    // Loop over matrix
-    for (int row = 0; row < N2D; row++) {
-        for (int col = 0; col < N2D; col++) {
-            // If non zero element found
-            if (matrix[row][col] != 0) {
-                // Add it to the row and col arrays created
-                A.val[val_col_idx] = matrix[row][col];
-                A.col_ind[val_col_idx] = col;
+struct A_csr create2dPoissonMatCSR(int n) {
+    struct A_csr A_1d = create1dPoissonMatCSR(n);
+    struct A_csr I = createIdentityCSR(n);
 
-                nnz_encountered++;
-                val_col_idx++;
+    struct A_csr* AI = spkron(&A_1d, n, n, &I, n, n, NULL, NULL);
+    struct A_csr* IA = spkron(&I, n, n, &A_1d, n, n, NULL, NULL);
+
+    /* Add AI + IA */
+    struct dynamic_array coo_entries;
+    dynamic_array_initialize(&coo_entries, sizeof(struct A_coo_entry));
+
+    for (unsigned int row = 0; row < n*n; row++) {
+        unsigned int ptr_A = AI->row_ptr[row];
+        unsigned int ptr_B = IA->row_ptr[row];
+        unsigned int end_A = AI->row_ptr[row+1];
+        unsigned int end_B = IA->row_ptr[row+1];
+
+        struct A_coo_entry entry;
+
+        while (1) {
+            if (ptr_A >= end_A || ptr_B >= end_B) {
+                break;
             }
+
+            int col_A = AI->col_ind[ptr_A];
+            int col_B = IA->col_ind[ptr_B];
+
+            if (col_A == col_B) {
+                entry.val = AI->val[ptr_A] + IA->val[ptr_B];
+                entry.row = row;
+                entry.col = col_A;
+
+                ptr_A++;
+                ptr_B++;
+            } else if (col_A < col_B) {
+                entry.val = AI->val[ptr_A];
+                entry.row = row;
+                entry.col = col_A;
+
+                ptr_A++;
+            } else {
+                entry.val = IA->val[ptr_B];
+                entry.row = row;
+                entry.col = col_B;
+
+                ptr_B++;
+            }
+
+            dynamic_array_push_back(&coo_entries, &entry);
         }
-        // Insert into row_ptr
-        A.row_ptr[row_ptr_idx] = nnz_encountered;
-        row_ptr_idx++;
+
+        /* Add leftover entries in row */
+        while (ptr_A < end_A) {
+            entry.val = AI->val[ptr_A];
+            entry.row = row;
+            entry.col = AI->col_ind[ptr_A];
+            dynamic_array_push_back(&coo_entries, &entry);
+            ptr_A++;
+        }
+        while (ptr_B < end_B) {
+            entry.val = IA->val[ptr_B];
+            entry.row = row;
+            entry.col = IA->col_ind[ptr_B];
+            dynamic_array_push_back(&coo_entries, &entry);
+            ptr_B++;
+        }
     }
-    return A;
+
+    struct A_coo coo_repr;
+    coo_repr.data = coo_entries.data;
+    coo_repr.nnz = coo_entries.elements;
+    coo_repr.rows = n*n;
+    coo_repr.cols = n*n;
+
+    struct A_csr csr_repr = *coo_to_csr(&coo_repr);
+    dynamic_array_free(&coo_entries);
+
+    return csr_repr;
 }
 
 struct A_dia create2dPoissonMatDIA(int n){

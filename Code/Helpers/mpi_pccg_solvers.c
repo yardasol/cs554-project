@@ -39,6 +39,7 @@ struct CGret mpiPCCG_solveCSR(struct par_multdat pmd, struct A_csr A, struct A_c
     z = pcret.sol;
     p = copy_vec(n, z);
 
+    rnorm = innerProd1(n,r,r); // rnorm=r'*r;
     rsold = innerProd1(n,r,z); //rsold=r*z
     int iters = 0;
     for (int i=0; i<n; i++){
@@ -105,13 +106,13 @@ void cg_Output_verify_v2(struct CGret cgret, struct CGret cgretcsr, struct CGret
         //print_mat(n,n,A);
         printf("b:\n"); print_vec(n,b);
         printf("Exact sol x:\n"); print_vec(n,x);
-        printf("CGFull sol x:\n"); print_vec(n,cgret.x);
+        //printf("CGFull sol x:\n"); print_vec(n,cgret.x);
         printf("CGCSR sol x:\n"); print_vec(n,cgretcsr.x);
         printf("PCCGCSR sol x:\n"); print_vec(n,pccgretcsr.x);
-        float errnorm = VecErrNorm(n,cgret.x,x);
+        /* float errnorm = VecErrNorm(n,cgret.x,x); */
         float errnormcsr = VecErrNorm(n,cgretcsr.x,x);
         float errnormpccgcsr = VecErrNorm(n,pccgretcsr.x,x);
-        printf("Within %d CGFull iters we converge to error norm: %f \n", cgret.iter, errnorm);
+        /* printf("Within %d CGFull iters we converge to error norm: %f \n", cgret.iter, errnorm); */
         printf("Within %d CGCSR iters we converge to error norm: %f \n", cgretcsr.iter, errnormcsr);
         printf("Within %d PCCGCSR iters we converge to error norm: %f \n \n", pccgretcsr.iter, errnormpccgcsr);
     }

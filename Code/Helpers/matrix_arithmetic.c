@@ -227,7 +227,6 @@ struct A_csr* spmatSpmatTransposeProductCSR(
     return csr_repr;
 }
 
-
 /**
  * Converts a sparse CSR matrix to a dense matrix.
  */

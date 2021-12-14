@@ -16,8 +16,6 @@
 
 int main(int argc, char *argv[])
 {
-  fprintf(stderr, "main()\n");
-
     int N = atoi(argv[1]);
     int ntimerf, ntimerc, ntimerd;
     ntimerf = atoi(argv[2]); // No. of times CG-Full solve done- time will be averaged
@@ -30,23 +28,19 @@ int main(int argc, char *argv[])
     int ntimer = 10;
     float tol = 0.000001;
 
-    fprintf(stderr, "Starting solver... (%d %d %d)\n", ntimerf, ntimerc, ntimerd); 
-
     struct CGret cgret, cgretcsr, cgretdia;
     struct CGret cgret_p, cgretcsr_p, cgretdia_p;
     clock_t beg, end;
     float t_tot, err; int iters;
     int numprocs, rank, rc;
 
-    float** A = create2dPoissonMat(N);
-    struct A_csr A_CSR= create2dPoissonMatCSR(A, N);
-    struct A_dia A_DIA= create2dPoissonMatDIA(N);    
+    struct A_csr A_CSR= create2dPoissonMatCSR(N);
     struct A_csr ILU_CSR = createPoissonILUCSR(N2D, n_diag, offset, &A_CSR);
     struct A_csr L_CSR = getLfromPoissonILUCSR(N2D, n_diag, offset, &ILU_CSR);
     struct A_csr U_CSR = getUfromPoissonILUCSR(N2D, n_diag, offset, &ILU_CSR);
-    float* x = create1dRandRHS(N2D);    
-    float* b = create1dZeroVec(N2D); 
-    float* b_p = create1dZeroVec(N2D);    
+    float* x = create1dRandRHS(N2D);
+    float* b = create1dZeroVec(N2D);
+    float* b_p = create1dZeroVec(N2D);
     float* b_csr = create1dZeroVec(N2D);
     float* b_p_csr = create1dZeroVec(N2D);
     float* b_dia = create1dZeroVec(N2D);
@@ -54,13 +48,9 @@ int main(int argc, char *argv[])
     float* xsol = create1dZeroVec(N2D);
     float* xguess = create1dZeroVec(N2D);
 
-    fprintf(stderr, "created all vectors\n");
-
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
-
-    fprintf(stderr, "set up MPI\n");
 
     if (numprocs < 2 ) {
       fprintf(stderr, "Need at least two MPI tasks. Quitting...\n");
@@ -77,34 +67,24 @@ int main(int argc, char *argv[])
     // make sure all workers receive the same random vec x created by master
     communicate_xvec(N2D,rank,nwrks,x);
 
-    fprintf(stderr, "created xvec\n");
-
     // create struct with data for parallel mult routines
     struct par_multdat pmdat = parmult_struct_assign(offsvec,rows,rank,N2D,nwrks,n_diag);
 
-    fprintf(stderr, "pmdat\n");
-
     //b_p = mpiMatVecProduct1(pmdat, x, A);
-    b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);        
-    //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);    
-
-    fprintf(stderr, "mpi matvec\n");
+    b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);
+    //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);
 
     /*cgret_p = mpiCGsolveFull(pmdat,A,b_p_csr,xguess,tol);
       cgretcsr_p = mpiCGsolveCSR(pmdat,A_CSR,b_p_csr,xguess,tol);
       cgretdia_p = mpiCGsolveDIA(pmdat,A_DIA,b_p_csr,xguess,tol);*/
 
-    if (rank == 0)
-      fprintf(stderr, "About to run CG iterations...\n");
     /* CG_FullMPI_timer_output(ntimerf,pmdat,x,xsol,b_p_csr,xguess,A,tol,dim); */
     CG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,tol,dim);
     /* CG_DIAMPI_timer_output(ntimerd,pmdat,x,xsol,b_p_csr,xguess,A_DIA,tol,dim); */
-    if (rank == 0)
-      fprintf(stderr, "Finished\n");
 
     char pctype[10];
     //Multigrid
-    strcpy(pctype,"MG2D"); //pctype = "Jacobi";
+    strcpy(pctype, "MG2D"); //pctype = "Jacobi";
 
     //Jacobi PC
     //strcpy(pctype,"Jacobi"); //pctype = "Jacobi";
@@ -112,11 +92,7 @@ int main(int argc, char *argv[])
     //ILU PC
     //strcpy(pctype,"ILU");
 
-    if (rank == 0)
-      fprintf(stderr, "About to run PCG iterations...\n");
     PCCG_CSRMPI_timer_output(ntimerc,pmdat,x,xsol,b_p_csr,xguess,A_CSR,L_CSR,U_CSR,tol,dim,pctype);
-    if (rank == 0)
-      fprintf(stderr, "Finished.\n");
 
     MPI_Finalize();
     return 0;
