@@ -1,0 +1,48 @@
+[golub189:13605] *** Process received signal ***
+[golub189:13605] Signal: Segmentation fault (11)
+[golub189:13605] Signal code: Address not mapped (1)
+[golub189:13605] Failing at address: (nil)
+[golub189:13606] *** Process received signal ***
+[golub189:13606] Signal: Segmentation fault (11)
+[golub189:13606] Signal code: Address not mapped (1)
+[golub189:13606] Failing at address: (nil)
+[golub189:13608] *** Process received signal ***
+[golub189:13613] *** Process received signal ***
+[golub189:13613] Signal: Segmentation fault (11)
+[golub189:13613] Signal code: Address not mapped (1)
+[golub189:13613] Failing at address: (nil)
+[golub189:13615] *** Process received signal ***
+[golub189:13615] Signal: Segmentation fault (11)
+[golub189:13615] Signal code: Address not mapped (1)
+[golub189:13615] Failing at address: (nil)
+[golub189:13616] *** Process received signal ***
+[golub189:13616] Signal: Segmentation fault (11)
+[golub189:13616] Signal code: Address not mapped (1)
+[golub189:13616] Failing at address: (nil)
+[golub189:13617] *** Process received signal ***
+[golub189:13617] Signal: Segmentation fault (11)
+[golub189:13617] Signal code: Address not mapped (1)
+[golub189:13617] Failing at address: (nil)
+[golub189:13618] *** Process received signal ***
+[golub189:13618] Signal: Segmentation fault (11)
+[golub189:13618] Signal code: Address not mapped (1)
+[golub189:13618] Failing at address: (nil)
+[golub189:13608] Signal: Segmentation fault (11)
+[golub189:13608] Signal code: Address not mapped (1)
+[golub189:13608] Failing at address: (nil)
+[golub189:13613] *** End of error message ***
+[golub189:13617] *** End of error message ***
+[golub189:13606] *** End of error message ***
+[golub189:13616] *** End of error message ***
+[golub189:13615] *** End of error message ***
+[golub189:13618] *** End of error message ***
+[golub189:13605] *** End of error message ***
+[golub189:13608] *** End of error message ***
+srun: error: golub189: tasks 32,35,43-44: Segmentation fault (core dumped)
+srun: error: golub189: tasks 33,40,42,45: Segmentation fault (core dumped)
+slurmstepd: error: *** STEP 4235909.0 ON ccc0107 CANCELLED AT 2021-12-13T21:39:03 DUE TO TIME LIMIT ***
+slurmstepd: error: *** JOB 4235909 ON ccc0107 CANCELLED AT 2021-12-13T21:39:03 DUE TO TIME LIMIT ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+srun: error: golub189: tasks 37,41: Terminated
+srun: error: golub189: task 39: Terminated
+srun: error: golub189: tasks 34,36,38,46-47: Terminated

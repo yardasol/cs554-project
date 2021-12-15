@@ -1,0 +1,16 @@
+[golub186:06395] *** Process received signal ***
+[golub186:06395] Signal: Segmentation fault (11)
+[golub186:06395] Signal code: Address not mapped (1)
+[golub186:06395] Failing at address: (nil)
+[golub186:06396] *** Process received signal ***
+[golub186:06396] Signal: Segmentation fault (11)
+[golub186:06396] Signal code: Address not mapped (1)
+[golub186:06396] Failing at address: (nil)
+[golub186:06395] *** End of error message ***
+[golub186:06396] *** End of error message ***
+srun: error: golub186: tasks 14-15: Segmentation fault (core dumped)
+slurmstepd: error: *** STEP 4235907.0 ON golub186 CANCELLED AT 2021-12-13T21:39:08 DUE TO TIME LIMIT ***
+slurmstepd: error: *** JOB 4235907 ON golub186 CANCELLED AT 2021-12-13T21:39:08 DUE TO TIME LIMIT ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+srun: error: golub186: tasks 9,11: Terminated
+srun: error: golub186: tasks 1,3,5,7,13: Terminated

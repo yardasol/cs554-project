@@ -1,0 +1,10 @@
+Size 2D: 4096 on 15 worker ranks
+Error, tol, iters 0.000001 0.000001 190 
+Total time taken: 0.042500 
+-------------------------------------------------------
+
+Size 2D: 4096 on 15 worker ranks
+Error, tol, iters 0.000001 0.000001 68 
+Total time taken: 0.033500 
+-------------------------------------------------------
+

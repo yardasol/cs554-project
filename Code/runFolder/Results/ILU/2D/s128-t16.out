@@ -1,0 +1,12 @@
+CSR Matrix rep:- 
+Size 2D: 16384 on 15 worker ranks
+Error, tol, iters 0.000003 0.000001 413 
+Total time taken: 0.282000 
+-------------------------------------------------------
+
+making pcdatasratring loopmaking pcdatasratring loopmaking pcdatasratring loopmaking pcdatasratring loopmaking pcdatasratring loopmaking pcdatasratring loopmaking pcdatasratring loopmaking pcdatasratring loopmaking pcdatasratring loopmaking pcdatasratring loopCSR Matrix rep (PCCG):- 
+Size 2D: 16384 on 15 worker ranks
+Error, tol, iters 0.000003 0.000001 122 
+Total time taken: 0.207000 
+-------------------------------------------------------
+

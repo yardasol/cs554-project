@@ -1,0 +1,8 @@
+srun: error: golub182: tasks 24-25,27-31: Segmentation fault (core dumped)
+srun: error: golub180: tasks 10-15: Segmentation fault (core dumped)
+srun: error: golub179: tasks 1-7: Segmentation fault (core dumped)
+srun: error: golub182: task 26: Segmentation fault (core dumped)
+srun: error: golub181: tasks 16-23: Segmentation fault (core dumped)
+slurmstepd: error: *** STEP 4233797.0 ON golub179 CANCELLED AT 2021-12-13T20:17:27 DUE TO TIME LIMIT ***
+slurmstepd: error: *** JOB 4233797 ON golub179 CANCELLED AT 2021-12-13T20:17:27 DUE TO TIME LIMIT ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.

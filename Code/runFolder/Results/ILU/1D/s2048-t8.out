@@ -1,0 +1,12 @@
+CSR Matrix rep:- 
+Size 1D: 2048 on 7 worker ranks
+Error, tol, iters 0.000422 0.000001 2047 
+Total time taken: 0.205000 
+-------------------------------------------------------
+
+CSR Matrix rep (PCCG):- 
+Size 1D: 2048 on 7 worker ranks
+Error, tol, iters 0.000280 0.000001 0 
+Total time taken: 0.000600 
+-------------------------------------------------------
+
