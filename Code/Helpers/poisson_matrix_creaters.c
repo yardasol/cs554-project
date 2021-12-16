@@ -7,17 +7,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include "spmatrix.h"
+#include <string.h>
 
-struct A_csr {
-    float* val;
-    int* col_ind;
-    int* row_ptr;
-};
-
-struct A_dia {
-    float** val;
-    float* off;
-};
+#include "matrix_arithmetic.c"
 
 /*Create a 1D representation of matrices*/
 float **create1dPoissonMat(int n){
@@ -49,7 +42,7 @@ float **createPoissonILU(int n, float **A){
                     if (A[i][j] != 0){
                         A[i][j] = A[i][j] - A[i][k] * A[k][j];
                     }
-                } 
+                }
             }
         }
     }
@@ -97,6 +90,27 @@ int find_l(int row, int col, int nnz, struct A_csr *A_ptr){
 	return l;
 }
 
+struct A_csr createIdentityCSR(int n) {
+    struct A_csr I;
+    const unsigned int nnz = n;
+    I.val = malloc(sizeof(float) * nnz);
+    for (unsigned int i = 0; i < nnz; i++) {
+        I.val[i] = 1.f;
+    }
+
+    I.row_ptr = malloc(sizeof(int) * (nnz + 1));
+    I.col_ind = malloc(sizeof(int) * n);
+
+    for (unsigned int i = 0; i < nnz; i++) {
+        I.row_ptr[i] = i;
+        I.col_ind[i] = i;
+    }
+
+    I.row_ptr[n] = nnz;
+
+    return I;
+}
+
 struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_ptr){
 	struct A_csr ILU_csr;
 	int nnz = n * n_diag - offset;
@@ -104,17 +118,20 @@ struct A_csr createPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *A_
 	//copy A
 	ILU_csr.val = malloc(sizeof(float*) * (nnz));
 	for (int a = 0; a < nnz; a++){ILU_csr.val[a] = A_ptr->val[a];}
-	ILU_csr.row_ptr = A_ptr->row_ptr;
-	ILU_csr.col_ind = A_ptr->col_ind;
+
+        ILU_csr.row_ptr = malloc(sizeof(float*) * (n + 1));
+        memcpy(ILU_csr.row_ptr, A_ptr->row_ptr, sizeof(float) * (n + 1));
+        ILU_csr.col_ind = malloc(sizeof(float*) * nnz);
+        memcpy(ILU_csr.col_ind, A_ptr->col_ind, sizeof(float) * nnz);
 
 	int l;
     int i, k, j;
 	int ik, kk, ij, kj;
     for(i = 1; i < n; i++){
         for(k = 0; k < i; k++){
-			//find index correspoinding to index ik 
+			//find index correspoinding to index ik
 			ik = find_l(i, k, nnz, A_ptr);
-				
+
 			//find index corresponding to index kk
 			kk = find_l(k, k, nnz, A_ptr);
 			if ((ik != nnz) && (kk != nnz)){
@@ -149,7 +166,7 @@ struct A_csr getLfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 	L_csr.row_ptr = malloc(sizeof(int*) * (n + 1));
 	L_csr.col_ind = malloc(sizeof(int*) * (nnz));
 
-	int row, col;	
+	int row, col;
 	int row_ptr, next_row_ptr;
 	int l,i;
 	l = 0;
@@ -184,7 +201,7 @@ struct A_csr getUfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 	U_csr.row_ptr = malloc(sizeof(int*) * (n + 1));
 	U_csr.col_ind = malloc(sizeof(int*) * (nnz));
 
-	int row, col;	
+	int row, col;
 	int row_ptr, next_row_ptr;
 	int l,i;
 	l = 0;
@@ -200,7 +217,7 @@ struct A_csr getUfromPoissonILUCSR(int n, int n_diag, int offset, struct A_csr *
 			}
 
 		}
-	
+
 		U_csr.row_ptr[row+1] = l;
 	}
 	return U_csr;
@@ -214,14 +231,14 @@ struct A_csr create1dPoissonMatCSR(int n){
     A.val = malloc(sizeof(float*) * (nnz));
     A.col_ind = malloc(sizeof(int*) * (nnz));
     A.row_ptr = malloc(sizeof(int*) * (n+1));
-    
+
     A.val[0]=2; A.val[1]=-1;
     A.val[nnz-2]=-1; A.val[nnz-1]=2;
     A.col_ind[0]=0; A.col_ind[1]=1;
     A.col_ind[nnz-2]=n-2; A.col_ind[nnz-1]=n-1;
     int count3 = 2;
     for(i = 2; i < nnz-2; i++){
-        A.col_ind[i] = i-count3; 
+        A.col_ind[i] = i-count3;
         if(i%3==0){A.val[i]=2;}
         else{A.val[i]=-1;}
         if((i-1)%3==0){count3+=2;}
@@ -229,10 +246,10 @@ struct A_csr create1dPoissonMatCSR(int n){
 
     A.row_ptr[0]=0; A.row_ptr[1]=A.row_ptr[0]+2;
     for(i = 2; i < n; i++){
-        A.row_ptr[i] = A.row_ptr[i-1]+3; 
+        A.row_ptr[i] = A.row_ptr[i-1]+3;
     }
-    A.row_ptr[n]=A.row_ptr[n-1]+2;    
-    
+    A.row_ptr[n]=A.row_ptr[n-1]+2;
+
     return A;
 }
 
@@ -240,44 +257,53 @@ struct A_dia create1dPoissonMatDIA(int n){
     int i, j, ndiag;
     struct A_dia A;
     ndiag = 3;
-    
+
     A.val = malloc(sizeof(float*) * ndiag);
-     
+
     for(i = 0; i < ndiag; i++) {
         A.val[i] = malloc(sizeof(float*) * n);
-    }    
+    }
     A.off = malloc(sizeof(int*) * (ndiag));
-    
+
     A.off[0]=-1; A.off[1]=0; A.off[2]=1;
-    
+
     for(j = 0; j < ndiag; j++){
         for(i = 0; i < n; i++){
             if(j==1){A.val[j][i]=2;}
             else{A.val[j][i]=-1;}
         }
     }
-    
+
     return A;
 }
 
 /*2D representation of matrices*/
 float **create2dPoissonMat(int size) {
-    // Total size of matrix: size^2 * size^2
+
     float **A;
     int n = size*size;
     int i,j;
     A = malloc(sizeof(float*) * n);
 
     for (int row = 0; row < n; row++) {
-        A[row] = malloc(sizeof(int *) * n);
+        A[row] = calloc(n, sizeof(int));
     }
-    for(i = 0; i < n; i++){
-        for(j = 0; j < n; j++){
-            A[i][j] = 0;
-            if (i==j) {A[i][j] = 4;}
-            else{
-                if ((i==j+1)||(i==j-1)){A[i][j] = -1;}
-                else{if ((i==j+size)||(i==j-size)) {A[i][j] = -1;}}    
+
+    for (unsigned int x = 0; x < size; x++) {
+        for (unsigned int y = 0; y < size; y++) {
+            unsigned int idx = y*size + x;
+            A[idx][idx] = 4.f;
+            if (x > 0) {
+                A[idx][idx - 1] = -1.f;
+            }
+            if (x < size - 1) {
+                A[idx][idx + 1] = -1.f;
+            }
+            if (y > 0) {
+                A[idx][idx - size] = -1.f;
+            }
+            if (y < size - 1) {
+                A[idx][idx + size] = -1.f;
             }
         }
     }
@@ -285,41 +311,84 @@ float **create2dPoissonMat(int size) {
     return A;
 }
 
-struct A_csr create2dPoissonMatCSR(float ** matrix, int n){
-    int nnz, N2D;
-    float nnz_per_row;
-    N2D = n*n;
-    struct A_csr A;
-    // To change? Variable on different sizes. We can also just do another
-    // pass over matrix to see nnz total.
-    nnz_per_row = 4; 
-    nnz = N2D*nnz_per_row-2;
-    A.val = malloc(sizeof(float*) * (nnz));
-    A.col_ind = malloc(sizeof(int*) * (nnz));
-    A.row_ptr = malloc(sizeof(int*) * (N2D+1)); 
-    A.row_ptr[0] = 0; // row_ptr @[0] is always 0
-    // Index of where to insert elements in the .val and .col_ind
-    int val_col_idx = 0; 
-    int nnz_encountered = 0; // Total tally for row_ptr
-    int row_ptr_idx = 1; // Index position for row ptr
-    // Loop over matrix
-    for (int row = 0; row < N2D; row++) {
-        for (int col = 0; col < N2D; col++) {
-            // If non zero element found
-            if (matrix[row][col] != 0) {
-                // Add it to the row and col arrays created
-                A.val[val_col_idx] = matrix[row][col];
-                A.col_ind[val_col_idx] = col;
+struct A_csr create2dPoissonMatCSR(int n) {
+    struct A_csr A_1d = create1dPoissonMatCSR(n);
+    struct A_csr I = createIdentityCSR(n);
 
-                nnz_encountered++;
-                val_col_idx++;
+    struct A_csr* AI = spkron(&A_1d, n, n, &I, n, n, NULL, NULL);
+    struct A_csr* IA = spkron(&I, n, n, &A_1d, n, n, NULL, NULL);
+
+    /* Add AI + IA */
+    struct dynamic_array coo_entries;
+    dynamic_array_initialize(&coo_entries, sizeof(struct A_coo_entry));
+
+    for (unsigned int row = 0; row < n*n; row++) {
+        unsigned int ptr_A = AI->row_ptr[row];
+        unsigned int ptr_B = IA->row_ptr[row];
+        unsigned int end_A = AI->row_ptr[row+1];
+        unsigned int end_B = IA->row_ptr[row+1];
+
+        struct A_coo_entry entry;
+
+        while (1) {
+            if (ptr_A >= end_A || ptr_B >= end_B) {
+                break;
             }
+
+            int col_A = AI->col_ind[ptr_A];
+            int col_B = IA->col_ind[ptr_B];
+
+            if (col_A == col_B) {
+                entry.val = AI->val[ptr_A] + IA->val[ptr_B];
+                entry.row = row;
+                entry.col = col_A;
+
+                ptr_A++;
+                ptr_B++;
+            } else if (col_A < col_B) {
+                entry.val = AI->val[ptr_A];
+                entry.row = row;
+                entry.col = col_A;
+
+                ptr_A++;
+            } else {
+                entry.val = IA->val[ptr_B];
+                entry.row = row;
+                entry.col = col_B;
+
+                ptr_B++;
+            }
+
+            dynamic_array_push_back(&coo_entries, &entry);
         }
-        // Insert into row_ptr
-        A.row_ptr[row_ptr_idx] = nnz_encountered;
-        row_ptr_idx++;
+
+        /* Add leftover entries in row */
+        while (ptr_A < end_A) {
+            entry.val = AI->val[ptr_A];
+            entry.row = row;
+            entry.col = AI->col_ind[ptr_A];
+            dynamic_array_push_back(&coo_entries, &entry);
+            ptr_A++;
+        }
+        while (ptr_B < end_B) {
+            entry.val = IA->val[ptr_B];
+            entry.row = row;
+            entry.col = IA->col_ind[ptr_B];
+            dynamic_array_push_back(&coo_entries, &entry);
+            ptr_B++;
+        }
     }
-    return A;
+
+    struct A_coo coo_repr;
+    coo_repr.data = coo_entries.data;
+    coo_repr.nnz = coo_entries.elements;
+    coo_repr.rows = n*n;
+    coo_repr.cols = n*n;
+
+    struct A_csr csr_repr = *coo_to_csr(&coo_repr);
+    dynamic_array_free(&coo_entries);
+
+    return csr_repr;
 }
 
 struct A_dia create2dPoissonMatDIA(int n){
@@ -328,12 +397,12 @@ struct A_dia create2dPoissonMatDIA(int n){
     ndiag = 5;
     int N2D = n*n;
     A.val = malloc(sizeof(float*) * ndiag);
-     
+
     for(i = 0; i < ndiag; i++) {
         A.val[i] = malloc(sizeof(float*) * N2D);
     }
     A.off = malloc(sizeof(int*) * (ndiag));
-    
+
     A.off[0] = -n;
     A.off[1] = -1;
     A.off[2] = 0;
@@ -341,14 +410,14 @@ struct A_dia create2dPoissonMatDIA(int n){
     A.off[4] = n;
 
     // A.off[0]=-1; A.off[1]=0; A.off[2]=1;
-    
+
     for(j = 0; j < ndiag; j++){
         for(i = 0; i < N2D; i++){
             if(j==2){A.val[j][i]=4;}
             else{A.val[j][i]=-1;}
         }
     }
-    
+
     return A;
 }
 
@@ -365,7 +434,7 @@ float *create1dZeroVec(int n){
 float *create2dZeroVec(int size){
     float *x;
     x = malloc(sizeof(int *) * (size*size));
-    
+
     for (int i = 0; i < size*size; i++) {
         x[i] = 0;
     }
@@ -379,7 +448,7 @@ float *create1dRandRHS(int n){
     x = malloc(sizeof(float*) * n);
     /* Intializes random number generator */
     srand((unsigned) time(&t));
-    
+
     for(int i = 0; i < n; i++){
         x[i] = rand()%10;
     }

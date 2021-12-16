@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     ntimerf = atoi(argv[2]); // No. of times CG-Full solve done- time will be averaged
     ntimerc = atoi(argv[3]); // No. of times CG-CSR solve done- time will be averaged
     ntimerd = atoi(argv[4]); // No. of times CG-DIA solve done- time will be averaged
-    int N2D = N*N; 
+    int N2D = N*N;
     int dim = 2; // Poisson Matrix type 2D
     int n_diag = 5;
     int ntimer = 10;
@@ -29,21 +29,21 @@ int main(int argc, char *argv[])
     struct CGret cgret, cgretcsr, cgretdia;
     struct CGret cgret_p, cgretcsr_p, cgretdia_p;
     clock_t beg, end;
-    float t_tot, err; int iters;    
+    float t_tot, err; int iters;
     int numprocs, rank, rc;
 
-    float** A = create2dPoissonMat(N);    
-    struct A_csr A_CSR= create2dPoissonMatCSR(A, N);
-    struct A_dia A_DIA= create2dPoissonMatDIA(N);    
+    float** A = create2dPoissonMat(N);
+    struct A_csr A_CSR= create2dPoissonMatCSR(N);
+    struct A_dia A_DIA= create2dPoissonMatDIA(N);
 
-    float* x = create1dRandRHS(N2D);    
-    float* b = create1dZeroVec(N2D); 
-    float* b_p = create1dZeroVec(N2D);    
+    float* x = create1dRandRHS(N2D);
+    float* b = create1dZeroVec(N2D);
+    float* b_p = create1dZeroVec(N2D);
     float* b_csr = create1dZeroVec(N2D);
-    float* b_p_csr = create1dZeroVec(N2D);    
+    float* b_p_csr = create1dZeroVec(N2D);
     float* b_dia = create1dZeroVec(N2D);
-    float* b_p_dia = create1dZeroVec(N2D);    
-    float* xsol = create1dZeroVec(N2D); 
+    float* b_p_dia = create1dZeroVec(N2D);
+    float* xsol = create1dZeroVec(N2D);
     float* xguess = create1dZeroVec(N2D);
 
     MPI_Init(&argc,&argv);
@@ -63,15 +63,15 @@ int main(int argc, char *argv[])
     int* offsvec =  row_load_allot(N2D,numprocs); // vector of offsets for each worker
     if (rank>0) { rows = offsvec[rank]-offsvec[rank-1]; } //Calc. no. of rows of A this worker rank deals with
 
-    // make sure all workers receive the same random vec x created by master 
-    communicate_xvec(N2D,rank,nwrks,x); 
+    // make sure all workers receive the same random vec x created by master
+    communicate_xvec(N2D,rank,nwrks,x);
 
     // create struct with data for parallel mult routines
-    struct par_multdat pmdat = parmult_struct_assign(offsvec,rows,rank,N2D,nwrks,n_diag); 
+    struct par_multdat pmdat = parmult_struct_assign(offsvec,rows,rank,N2D,nwrks,n_diag);
 
     //b_p = mpiMatVecProduct1(pmdat, x, A);
-    b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);        
-    //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);    
+    b_p_csr = mpiMatVecProductCSR1(pmdat, x, A_CSR);
+    //b_p_dia = mpiMatVecProductDIA1(pmdat, x, A_DIA);
 
     /*cgret_p = mpiCGsolveFull(pmdat,A,b_p_csr,xguess,tol);
       cgretcsr_p = mpiCGsolveCSR(pmdat,A_CSR,b_p_csr,xguess,tol);
@@ -91,7 +91,3 @@ int main(int argc, char *argv[])
     MPI_Finalize();
     return 0;
 }
-
-
-
-
